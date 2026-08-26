@@ -1,0 +1,5 @@
+project_id = "rtqvqohfbmycehxbqjyq"
+
+[functions.manage-store-members]
+verify_jwt = true
+
