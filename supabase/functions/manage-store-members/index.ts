@@ -22,8 +22,9 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const authorization = req.headers.get("Authorization");
+  const accessToken = authorization?.replace(/^Bearer\s+/i, "").trim();
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !authorization) {
+  if (!supabaseUrl || !anonKey || !serviceRoleKey || !authorization || !accessToken) {
     return json({ error: "Authentication is required" }, 401);
   }
 
@@ -35,7 +36,9 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: userData, error: userError } = await callerClient.auth.getUser();
+  // Verify the caller's current user token here. The legacy gateway JWT verifier is
+  // intentionally disabled because it cannot validate Supabase's asymmetric JWTs.
+  const { data: userData, error: userError } = await callerClient.auth.getUser(accessToken);
   if (userError || !userData.user) return json({ error: "Invalid session" }, 401);
 
   let body: Record<string, unknown>;
@@ -49,14 +52,27 @@ Deno.serve(async (req) => {
   const storeId = String(body.store_id || "");
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
-  const { data: callerMember, error: callerError } = await adminClient
+  // Check the caller's own membership with the same authenticated client used by
+  // the app. This avoids treating an admin-client connection problem as if the
+  // signed-in owner did not have permission.
+  const { data: callerMember, error: callerError } = await callerClient
     .from("store_users")
     .select("role")
     .eq("store_id", storeId)
     .eq("user_id", userData.user.id)
     .maybeSingle();
 
-  if (callerError || callerMember?.role !== "owner") {
+  if (callerError) {
+    console.error("Failed to verify store membership", {
+      storeId,
+      userId: userData.user.id,
+      code: callerError.code,
+      message: callerError.message,
+    });
+    return json({ error: "Member permission check failed" }, 500);
+  }
+
+  if (callerMember?.role !== "owner") {
     return json({ error: "Only store owners can manage members" }, 403);
   }
 
@@ -89,6 +105,9 @@ Deno.serve(async (req) => {
     const employeeId = body.employee_id ? String(body.employee_id) : null;
     if (!email || !email.includes("@")) return json({ error: "Valid email is required" }, 400);
     if (!['manager', 'staff'].includes(role)) return json({ error: "Invalid role" }, 400);
+    if (role === "staff" && !employeeId) {
+      return json({ error: "Staff accounts must be linked to an employee account" }, 400);
+    }
 
     if (employeeId) {
       const { data: employee } = await adminClient
