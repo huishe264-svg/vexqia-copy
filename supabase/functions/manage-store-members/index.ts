@@ -247,23 +247,22 @@ Deno.serve(async (req) => {
     // Every address follows the same flow: save a pending invitation first, then
     // let the recipient claim it with the verified email in their own session.
     // This avoids assigning a store to a different or not-yet-confirmed Auth user.
-    const invitation = {
-      store_id: storeId,
-      email,
-      role,
-      employee_id: employeeId,
-      status: "pending",
-      invited_by: userData.user.id,
-      provisional_user_id: targetUser?.id ?? null,
-      accepted_by: null,
-      accepted_at: null,
-      updated_at: new Date().toISOString(),
-    };
-    const { error: pendingError } = await adminClient.from("store_invitations").upsert(
-      invitation,
-      { onConflict: "store_id,email" },
-    );
-    if (pendingError) return failure("INVITATION_SAVE_FAILED", "Pending invitation could not be saved", 500, pendingError.message);
+    const { error: pendingError } = await callerClient.rpc("save_store_invitation", {
+      target_store_id: storeId,
+      target_email: email,
+      target_role: role,
+      target_employee_id: employeeId,
+      target_provisional_user_id: targetUser?.id ?? null,
+    });
+    if (pendingError) {
+      console.error("Pending invitation could not be saved", {
+        storeId,
+        email,
+        code: pendingError.code,
+        message: pendingError.message,
+      });
+      return failure("INVITATION_SAVE_FAILED", "Pending invitation could not be saved", 500, pendingError.message);
+    }
 
     // Magic links work for both existing and new Auth users. Google login with
     // the same email remains available if email delivery is delayed or blocked.
