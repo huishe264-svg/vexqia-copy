@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const mailClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   // Verify the caller's current user token here. The legacy gateway JWT verifier is
   // intentionally disabled because it cannot validate Supabase's asymmetric JWTs.
@@ -231,98 +234,65 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!targetUser) {
-      const invitation = {
-        store_id: storeId,
-        email,
-        role,
-        employee_id: employeeId,
-        status: "pending",
-        invited_by: userData.user.id,
-        provisional_user_id: null,
-        accepted_by: null,
-        accepted_at: null,
-        updated_at: new Date().toISOString(),
-      };
-      const { error: pendingError } = await adminClient.from("store_invitations").upsert(
-        invitation,
-        { onConflict: "store_id,email" },
-      );
-      if (pendingError) return failure("INVITATION_SAVE_FAILED", "Pending invitation could not be saved", 500, pendingError.message);
-
-      const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-        email,
-        { redirectTo: appUrl },
-      );
-      if (inviteError || !inviteData.user) {
-        console.error("Invitation email could not be sent", {
-          email,
-          code: inviteError?.code,
-          message: inviteError?.message,
-        });
-        return json({
-          ok: true,
-          invited: false,
-          pending: true,
-          email,
-          email_delivery: "failed",
-          code: "INVITE_EMAIL_FAILED",
-          warning: "Invitation was saved, but the email could not be sent",
-        });
-      }
-
-      const { error: provisionalError } = await adminClient
-        .from("store_invitations")
-        .update({
-          provisional_user_id: inviteData.user.id,
-          updated_at: new Date().toISOString(),
-        })
+    if (targetUser) {
+      const { data: existing } = await adminClient
+        .from("store_users")
+        .select("role")
         .eq("store_id", storeId)
-        .eq("email", email);
-      if (provisionalError) return failure("INVITATION_UPDATE_FAILED", "Invitation user could not be saved", 500, provisionalError.message);
-
-      return json({ ok: true, invited: true, pending: true, email });
+        .eq("user_id", targetUser.id)
+        .maybeSingle();
+      if (existing?.role === "owner") return failure("OWNER_ROLE_PROTECTED", "Owner permissions cannot be changed", 403);
     }
 
-    const { data: existing } = await adminClient
-      .from("store_users")
-      .select("role")
-      .eq("store_id", storeId)
-      .eq("user_id", targetUser.id)
-      .maybeSingle();
-    if (existing?.role === "owner") return failure("OWNER_ROLE_PROTECTED", "Owner permissions cannot be changed", 403);
-
-    const { error: membershipError } = await adminClient.from("store_users").upsert(
-      {
-        store_id: storeId,
-        user_id: targetUser.id,
-        role,
-        employee_id: employeeId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "store_id,user_id" },
-    );
-    if (membershipError) return failure("MEMBERSHIP_SAVE_FAILED", "Store membership could not be saved", 500, membershipError.message);
-
-    const { error: invitationError } = await adminClient.from("store_invitations").upsert(
-      {
-        store_id: storeId,
-        email,
-        role,
-        employee_id: employeeId,
-        status: "accepted",
-        invited_by: userData.user.id,
-        provisional_user_id: targetUser.id,
-        accepted_by: targetUser.id,
-        accepted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
+    // Every address follows the same flow: save a pending invitation first, then
+    // let the recipient claim it with the verified email in their own session.
+    // This avoids assigning a store to a different or not-yet-confirmed Auth user.
+    const invitation = {
+      store_id: storeId,
+      email,
+      role,
+      employee_id: employeeId,
+      status: "pending",
+      invited_by: userData.user.id,
+      provisional_user_id: targetUser?.id ?? null,
+      accepted_by: null,
+      accepted_at: null,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: pendingError } = await adminClient.from("store_invitations").upsert(
+      invitation,
       { onConflict: "store_id,email" },
     );
-    if (invitationError) return failure("INVITATION_FINALIZE_FAILED", "Invitation could not be finalized", 500, invitationError.message);
+    if (pendingError) return failure("INVITATION_SAVE_FAILED", "Pending invitation could not be saved", 500, pendingError.message);
 
-    return json({ ok: true, invited: false, pending: false, user_id: targetUser.id, email });
+    // Magic links work for both existing and new Auth users. Google login with
+    // the same email remains available if email delivery is delayed or blocked.
+    const { error: emailError } = await mailClient.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: appUrl,
+      },
+    });
+    if (emailError) {
+      console.error("Invitation login email could not be sent", {
+        email,
+        code: emailError.code,
+        message: emailError.message,
+      });
+      return json({
+        ok: true,
+        pending: true,
+        email,
+        email_delivery: "failed",
+        code: "LOGIN_EMAIL_FAILED",
+        warning: "Invitation was saved, but the login email could not be sent",
+      });
+    }
+
+    return json({ ok: true, pending: true, email, email_delivery: "sent" });
   }
 
   return json({ error: "Unknown action" }, 400);
 });
+
