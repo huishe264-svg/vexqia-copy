@@ -14,13 +14,30 @@ const json = (body: unknown, status = 200) =>
 
 const appUrl = "https://huishe264-svg.github.io/vexqia-copy/";
 
+const namedKey = (environmentName: string) => {
+  const raw = Deno.env.get(environmentName);
+  if (!raw) return null;
+  try {
+    const keys = JSON.parse(raw) as Record<string, unknown>;
+    const preferred = keys.default;
+    if (typeof preferred === "string" && preferred) return preferred;
+    return Object.values(keys).find((value): value is string => typeof value === "string" && Boolean(value)) ?? null;
+  } catch {
+    return null;
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = namedKey("SUPABASE_PUBLISHABLE_KEYS")
+    ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")
+    ?? Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceRoleKey = namedKey("SUPABASE_SECRET_KEYS")
+    ?? Deno.env.get("SUPABASE_SECRET_KEY")
+    ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const authorization = req.headers.get("Authorization");
   const accessToken = authorization?.replace(/^Bearer\s+/i, "").trim();
 
@@ -49,6 +66,21 @@ Deno.serve(async (req) => {
   }
 
   const action = String(body.action || "");
+
+  if (action === "claim") {
+    const { data: claimed, error: claimError } = await callerClient.rpc("claim_store_invitations");
+    if (claimError) {
+      console.error("Failed to claim store invitations", {
+        userId: userData.user.id,
+        email: userData.user.email,
+        code: claimError.code,
+        message: claimError.message,
+      });
+      return json({ error: "Invitation claim failed", detail: claimError.message, code: claimError.code }, 409);
+    }
+    return json({ ok: true, claimed: claimed || [] });
+  }
+
   const storeId = String(body.store_id || "");
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -77,25 +109,62 @@ Deno.serve(async (req) => {
   }
 
   if (action === "list") {
-    const { data: members, error: membersError } = await adminClient
+    // Membership rows are safe to read through the caller's authenticated client.
+    // RLS already restricts them to the caller's own store, so the member list
+    // remains available even if the separate admin email lookup is unavailable.
+    const { data: members, error: membersError } = await callerClient
       .from("store_users")
       .select("store_id,user_id,role,employee_id,created_at,updated_at")
       .eq("store_id", storeId)
       .order("created_at");
-    if (membersError) return json({ error: membersError.message }, 400);
+    if (membersError) {
+      console.error("Failed to load store members", {
+        storeId,
+        code: membersError.code,
+        message: membersError.message,
+      });
+      return json({ error: "Member list query failed", code: membersError.code }, 500);
+    }
+
+    const { data: invitations, error: invitationsError } = await adminClient
+      .from("store_invitations")
+      .select("store_id,email,role,employee_id,status,created_at,updated_at")
+      .eq("store_id", storeId)
+      .eq("status", "pending")
+      .order("created_at");
+    if (invitationsError) {
+      console.error("Failed to load pending invitations", {
+        storeId,
+        code: invitationsError.code,
+        message: invitationsError.message,
+      });
+      return json({ error: "Invitation list query failed", code: invitationsError.code }, 500);
+    }
 
     const { data: authData, error: authError } = await adminClient.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
     });
-    if (authError) return json({ error: authError.message }, 400);
+    if (authError) {
+      console.error("Failed to load authentication users", {
+        code: authError.code,
+        message: authError.message,
+      });
+      return json({
+        members: (members || []).map((member) => ({ ...member, email: "" })),
+        invitations: invitations || [],
+        warning: "Auth user list failed",
+      });
+    }
 
     const emailById = new Map(authData.users.map((user) => [user.id, user.email || ""]));
+
     return json({
       members: (members || []).map((member) => ({
         ...member,
         email: emailById.get(member.user_id) || "",
       })),
+      invitations: invitations || [],
     });
   }
 
@@ -123,18 +192,78 @@ Deno.serve(async (req) => {
       page: 1,
       perPage: 1000,
     });
-    if (authError) return json({ error: authError.message }, 400);
+    if (authError) {
+      console.error("Failed to search authentication users", {
+        code: authError.code,
+        message: authError.message,
+      });
+      return json({ error: "Auth user list failed", code: authError.code }, 500);
+    }
 
-    let targetUser = authData.users.find((user) => user.email?.toLowerCase() === email);
-    let invited = false;
+    const targetUser = authData.users.find((user) => user.email?.toLowerCase() === email);
+
+    if (employeeId) {
+      const { data: linkedMember, error: linkedMemberError } = await adminClient
+        .from("store_users")
+        .select("user_id")
+        .eq("store_id", storeId)
+        .eq("employee_id", employeeId)
+        .maybeSingle();
+      if (linkedMemberError) return json({ error: linkedMemberError.message }, 400);
+      if (linkedMember && linkedMember.user_id !== targetUser?.id) {
+        return json({ error: "Employee account is already linked to another member" }, 409);
+      }
+
+      const { data: pendingEmployee, error: pendingEmployeeError } = await adminClient
+        .from("store_invitations")
+        .select("email")
+        .eq("store_id", storeId)
+        .eq("employee_id", employeeId)
+        .eq("status", "pending")
+        .neq("email", email)
+        .maybeSingle();
+      if (pendingEmployeeError) return json({ error: pendingEmployeeError.message }, 400);
+      if (pendingEmployee) {
+        return json({ error: "Employee account is already reserved by another invitation" }, 409);
+      }
+    }
+
     if (!targetUser) {
+      const invitation = {
+        store_id: storeId,
+        email,
+        role,
+        employee_id: employeeId,
+        status: "pending",
+        invited_by: userData.user.id,
+        provisional_user_id: null,
+        accepted_by: null,
+        accepted_at: null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: pendingError } = await adminClient.from("store_invitations").upsert(
+        invitation,
+        { onConflict: "store_id,email" },
+      );
+      if (pendingError) return json({ error: pendingError.message }, 400);
+
       const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
         email,
         { redirectTo: appUrl },
       );
       if (inviteError || !inviteData.user) return json({ error: inviteError?.message || "Invite failed" }, 400);
-      targetUser = inviteData.user;
-      invited = true;
+
+      const { error: provisionalError } = await adminClient
+        .from("store_invitations")
+        .update({
+          provisional_user_id: inviteData.user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("store_id", storeId)
+        .eq("email", email);
+      if (provisionalError) return json({ error: provisionalError.message }, 400);
+
+      return json({ ok: true, invited: true, pending: true, email });
     }
 
     const { data: existing } = await adminClient
@@ -157,9 +286,25 @@ Deno.serve(async (req) => {
     );
     if (membershipError) return json({ error: membershipError.message }, 400);
 
-    return json({ ok: true, invited, user_id: targetUser.id, email });
+    const { error: invitationError } = await adminClient.from("store_invitations").upsert(
+      {
+        store_id: storeId,
+        email,
+        role,
+        employee_id: employeeId,
+        status: "accepted",
+        invited_by: userData.user.id,
+        provisional_user_id: targetUser.id,
+        accepted_by: targetUser.id,
+        accepted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "store_id,email" },
+    );
+    if (invitationError) return json({ error: invitationError.message }, 400);
+
+    return json({ ok: true, invited: false, pending: false, user_id: targetUser.id, email });
   }
 
   return json({ error: "Unknown action" }, 400);
 });
-
