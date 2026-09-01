@@ -115,62 +115,24 @@ Deno.serve(async (req) => {
   }
 
   if (action === "list") {
-    // Membership rows are safe to read through the caller's authenticated client.
-    // RLS already restricts them to the caller's own store, so the member list
-    // remains available even if the separate admin email lookup is unavailable.
-    const { data: members, error: membersError } = await callerClient
-      .from("store_users")
-      .select("store_id,user_id,role,employee_id,created_at,updated_at")
-      .eq("store_id", storeId)
-      .order("created_at");
-    if (membersError) {
-      console.error("Failed to load store members", {
+    // Email addresses come from an owner-only database function. They are never
+    // exposed through the regular store_users RLS policy to managers or staff.
+    const { data: directory, error: directoryError } = await callerClient.rpc(
+      "get_store_member_directory",
+      { target_store_id: storeId },
+    );
+    if (directoryError) {
+      console.error("Failed to load the owner member directory", {
         storeId,
-        code: membersError.code,
-        message: membersError.message,
+        code: directoryError.code,
+        message: directoryError.message,
       });
-      return json({ error: "Member list query failed", code: membersError.code }, 500);
+      return failure("MEMBER_DIRECTORY_FAILED", "Member directory query failed", 500, directoryError.message);
     }
-
-    const { data: invitations, error: invitationsError } = await adminClient
-      .from("store_invitations")
-      .select("store_id,email,role,employee_id,status,created_at,updated_at")
-      .eq("store_id", storeId)
-      .eq("status", "pending")
-      .order("created_at");
-    if (invitationsError) {
-      console.error("Failed to load pending invitations", {
-        storeId,
-        code: invitationsError.code,
-        message: invitationsError.message,
-      });
-      return json({ error: "Invitation list query failed", code: invitationsError.code }, 500);
-    }
-
-    const { data: authData, error: authError } = await adminClient.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (authError) {
-      console.error("Failed to load authentication users", {
-        code: authError.code,
-        message: authError.message,
-      });
-      return json({
-        members: (members || []).map((member) => ({ ...member, email: "" })),
-        invitations: invitations || [],
-        warning: "Auth user list failed",
-      });
-    }
-
-    const emailById = new Map(authData.users.map((user) => [user.id, user.email || ""]));
 
     return json({
-      members: (members || []).map((member) => ({
-        ...member,
-        email: emailById.get(member.user_id) || "",
-      })),
-      invitations: invitations || [],
+      members: Array.isArray(directory?.members) ? directory.members : [],
+      invitations: Array.isArray(directory?.invitations) ? directory.invitations : [],
     });
   }
 
