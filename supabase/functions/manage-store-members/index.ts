@@ -12,6 +12,9 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
 
+const failure = (code: string, message: string, status = 400, detail?: string) =>
+  json({ error: message, code, ...(detail ? { detail } : {}) }, status);
+
 const appUrl = "https://huishe264-svg.github.io/vexqia-copy/";
 
 const namedKey = (environmentName: string) => {
@@ -172,10 +175,10 @@ Deno.serve(async (req) => {
     const email = String(body.email || "").trim().toLowerCase();
     const role = String(body.role || "staff");
     const employeeId = body.employee_id ? String(body.employee_id) : null;
-    if (!email || !email.includes("@")) return json({ error: "Valid email is required" }, 400);
-    if (!['manager', 'staff'].includes(role)) return json({ error: "Invalid role" }, 400);
+    if (!email || !email.includes("@")) return failure("INVALID_EMAIL", "Valid email is required");
+    if (!['manager', 'staff'].includes(role)) return failure("INVALID_ROLE", "Invalid role");
     if (role === "staff" && !employeeId) {
-      return json({ error: "Staff accounts must be linked to an employee account" }, 400);
+      return failure("STAFF_EMPLOYEE_REQUIRED", "Staff accounts must be linked to an employee account");
     }
 
     if (employeeId) {
@@ -185,7 +188,7 @@ Deno.serve(async (req) => {
         .eq("id", employeeId)
         .eq("store_id", storeId)
         .maybeSingle();
-      if (!employee) return json({ error: "Employee does not belong to this store" }, 400);
+      if (!employee) return failure("EMPLOYEE_NOT_FOUND", "Employee does not belong to this store");
     }
 
     const { data: authData, error: authError } = await adminClient.auth.admin.listUsers({
@@ -197,7 +200,7 @@ Deno.serve(async (req) => {
         code: authError.code,
         message: authError.message,
       });
-      return json({ error: "Auth user list failed", code: authError.code }, 500);
+      return failure("AUTH_LIST_FAILED", "Auth user list failed", 500, authError.message);
     }
 
     const targetUser = authData.users.find((user) => user.email?.toLowerCase() === email);
@@ -209,9 +212,9 @@ Deno.serve(async (req) => {
         .eq("store_id", storeId)
         .eq("employee_id", employeeId)
         .maybeSingle();
-      if (linkedMemberError) return json({ error: linkedMemberError.message }, 400);
+      if (linkedMemberError) return failure("MEMBERSHIP_CHECK_FAILED", "Member account check failed", 500, linkedMemberError.message);
       if (linkedMember && linkedMember.user_id !== targetUser?.id) {
-        return json({ error: "Employee account is already linked to another member" }, 409);
+        return failure("EMPLOYEE_ALREADY_LINKED", "Employee account is already linked to another member", 409);
       }
 
       const { data: pendingEmployee, error: pendingEmployeeError } = await adminClient
@@ -222,9 +225,9 @@ Deno.serve(async (req) => {
         .eq("status", "pending")
         .neq("email", email)
         .maybeSingle();
-      if (pendingEmployeeError) return json({ error: pendingEmployeeError.message }, 400);
+      if (pendingEmployeeError) return failure("INVITATION_CHECK_FAILED", "Pending invitation check failed", 500, pendingEmployeeError.message);
       if (pendingEmployee) {
-        return json({ error: "Employee account is already reserved by another invitation" }, 409);
+        return failure("EMPLOYEE_ALREADY_RESERVED", "Employee account is already reserved by another invitation", 409);
       }
     }
 
@@ -245,13 +248,28 @@ Deno.serve(async (req) => {
         invitation,
         { onConflict: "store_id,email" },
       );
-      if (pendingError) return json({ error: pendingError.message }, 400);
+      if (pendingError) return failure("INVITATION_SAVE_FAILED", "Pending invitation could not be saved", 500, pendingError.message);
 
       const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
         email,
         { redirectTo: appUrl },
       );
-      if (inviteError || !inviteData.user) return json({ error: inviteError?.message || "Invite failed" }, 400);
+      if (inviteError || !inviteData.user) {
+        console.error("Invitation email could not be sent", {
+          email,
+          code: inviteError?.code,
+          message: inviteError?.message,
+        });
+        return json({
+          ok: true,
+          invited: false,
+          pending: true,
+          email,
+          email_delivery: "failed",
+          code: "INVITE_EMAIL_FAILED",
+          warning: "Invitation was saved, but the email could not be sent",
+        });
+      }
 
       const { error: provisionalError } = await adminClient
         .from("store_invitations")
@@ -261,7 +279,7 @@ Deno.serve(async (req) => {
         })
         .eq("store_id", storeId)
         .eq("email", email);
-      if (provisionalError) return json({ error: provisionalError.message }, 400);
+      if (provisionalError) return failure("INVITATION_UPDATE_FAILED", "Invitation user could not be saved", 500, provisionalError.message);
 
       return json({ ok: true, invited: true, pending: true, email });
     }
@@ -272,7 +290,7 @@ Deno.serve(async (req) => {
       .eq("store_id", storeId)
       .eq("user_id", targetUser.id)
       .maybeSingle();
-    if (existing?.role === "owner") return json({ error: "Owner permissions cannot be changed" }, 403);
+    if (existing?.role === "owner") return failure("OWNER_ROLE_PROTECTED", "Owner permissions cannot be changed", 403);
 
     const { error: membershipError } = await adminClient.from("store_users").upsert(
       {
@@ -284,7 +302,7 @@ Deno.serve(async (req) => {
       },
       { onConflict: "store_id,user_id" },
     );
-    if (membershipError) return json({ error: membershipError.message }, 400);
+    if (membershipError) return failure("MEMBERSHIP_SAVE_FAILED", "Store membership could not be saved", 500, membershipError.message);
 
     const { error: invitationError } = await adminClient.from("store_invitations").upsert(
       {
@@ -301,7 +319,7 @@ Deno.serve(async (req) => {
       },
       { onConflict: "store_id,email" },
     );
-    if (invitationError) return json({ error: invitationError.message }, 400);
+    if (invitationError) return failure("INVITATION_FINALIZE_FAILED", "Invitation could not be finalized", 500, invitationError.message);
 
     return json({ ok: true, invited: false, pending: false, user_id: targetUser.id, email });
   }
