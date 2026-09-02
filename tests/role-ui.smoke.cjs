@@ -210,7 +210,7 @@ const path = require("node:path");
     const extraBeforeTotal = Boolean(document.getElementById("extraAmount").compareDocumentPosition(document.getElementById("totalAmount")) & Node.DOCUMENT_POSITION_FOLLOWING);
     const fourthRoundResult = {
       bottomNavOrder: bottomNavLabels === "ホーム,カレンダー,顧客,売上入力,その他",
-      compactHome: document.getElementById("homeTodaySummary").textContent.trim() === "" && !document.getElementById("roleHomeSummary").textContent.includes("店舗の運営状況"),
+      compactHome: !document.getElementById("homeTodaySummary") && !document.getElementById("homeAttention") && !document.getElementById("homeSalesChart") && document.getElementById("roleHomeSummary").textContent.includes("本日の予定") && document.getElementById("roleHomeSummary").textContent.includes("本日の目標金額") && !document.getElementById("roleHomeSummary").textContent.includes("店舗の運営状況"),
       navyGoalFirst: document.querySelector("#page-home > :first-child")?.id === "homeGoalSection" && Boolean(document.querySelector("#homeGoalSection .home-goal-card")),
       requiredMarksCompact: [...document.querySelectorAll("#page-input .required")].every((node) => node.textContent.trim() === "※" && node.getAttribute("aria-label") === "必須"),
       companionsInBasicInfo: companionCard?.textContent.includes("基本情報") && companionCard?.contains(document.getElementById("customerId")),
