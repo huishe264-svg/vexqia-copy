@@ -40,9 +40,9 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     ];
     employees = [{ id: "employee-1", name: "口座A" }];
     settlements = [
-      { business_date: "2026-09-01", settled_net_amount: 30000, consumables_amount: 0, settled_sale_ids: ["sep-1"] },
-      { business_date: "2026-09-02", settled_net_amount: 40000, consumables_amount: 0, settled_sale_ids: ["sep-3"] },
-      { business_date: "2026-08-31", settled_net_amount: 120000, consumables_amount: 0, settled_sale_ids: ["aug-1"] },
+      { business_date: "2026-09-01", settled_total_amount: 30000, settled_delivery_tobacco_amount: 0, settled_net_amount: 30000, consumables_amount: 0, settled_sale_ids: ["sep-1"] },
+      { business_date: "2026-09-02", settled_total_amount: 40000, settled_delivery_tobacco_amount: 0, settled_net_amount: 40000, consumables_amount: 0, settled_sale_ids: ["sep-3"] },
+      { business_date: "2026-08-31", settled_total_amount: 120000, settled_delivery_tobacco_amount: 0, settled_net_amount: 120000, consumables_amount: 0, settled_sale_ids: ["aug-1"] },
     ];
     monthlyGoals = [
       { goal_month: "2026-09-01", target_amount: 200000, weekday_goal: 10000, weekend_goal: 20000, open_weekdays: [1, 2, 3, 4, 5] },
@@ -80,7 +80,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     renderAnalytics();
     const analyticsHistoricalGoal = document.getElementById("analyticsMetrics").children[3].textContent.includes("120.0%") && document.getElementById("analyticsMetrics").children[3].textContent.includes("+¥20,000");
     renderSalesDay("2026-08-30");
-    const zeroSalesCanClose = Boolean(document.getElementById("closeEmptyDayBtn")) && document.getElementById("salesDayDetail").textContent.includes("売上0件でこの日の営業を締める");
+    const zeroSalesCanClose = Boolean(document.getElementById("closeEmptyDayBtn")) && document.getElementById("salesDayDetail").textContent.includes("売上0件で精算済みにする");
 
     return {
       monthTotal,
@@ -118,4 +118,3 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   console.error(error);
   process.exit(1);
 });
-

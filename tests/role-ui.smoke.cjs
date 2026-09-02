@@ -17,7 +17,7 @@ const path = require("node:path");
   await page.route("https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js", (route) =>
     route.fulfill({
       contentType: "application/javascript",
-      body: `window.Chart=class{constructor(canvas,config){this.canvas=canvas;this.config=config}destroy(){}};`,
+      body: `window.Chart=class{constructor(canvas,config){this.canvas=canvas;this.config=config}destroy(){} update(){}};`,
     }),
   );
 
@@ -113,7 +113,7 @@ const path = require("node:path");
     goalSettings = { weekday_goal: 10000, weekend_goal: 15000, closed_weekdays: [] };
     businessOverrides = [];
     sales = [
-      { business_date: "2026-08-10", payment_status: "回収済み", payment_method: "現金", total_amount: 30000, party_size: 2, employee_id: "employee-1", customer_id: "customer-1" },
+      { business_date: "2026-08-10", payment_status: "回収済み", payment_method: "現金", total_amount: 30000, delivery_tobacco_amount: 0, party_size: 2, employee_id: "employee-1", customer_id: "customer-1", is_settled: true },
       { business_date: "2026-08-11", payment_status: "未収", payment_method: "カード", total_amount: 12000, party_size: 1, employee_id: "employee-1", customer_id: "customer-1" },
     ];
     document.getElementById("analyticsStartDate").value = "2026-08-01";
@@ -154,13 +154,13 @@ const path = require("node:path");
     setAnalyticsPreset("month");
     showSaleSuccess(customers[0], 38000, "カード", true);
     const uiThirdRoundResult = {
-      recentCustomerVisible: !document.getElementById("recentCustomerBlock").classList.contains("hidden"),
+      recentCustomerRemoved: !document.getElementById("recentCustomerBlock"),
       stickySummaryComplete: document.getElementById("saleSubmitSummary").textContent.includes("分析顧客") && document.getElementById("saleSubmitSummary").textContent.includes("¥38,000") && document.getElementById("saleSubmitSummary").textContent.includes("カード"),
       selectedStateAccessible: document.querySelector('[data-group="paymentMethod"][data-value="カード"]').getAttribute("aria-pressed") === "true",
       dailyCashVisible: document.getElementById("salesDayDetail").textContent.includes("現金売上") && document.getElementById("salesDayDetail").textContent.includes("¥30,000"),
       dailyCardVisible: document.getElementById("salesDayDetail").textContent.includes("カード売上") && document.getElementById("salesDayDetail").textContent.includes("¥8,000"),
       dailyGrossVisible: document.getElementById("salesDayDetail").textContent.includes("総売上") && document.getElementById("salesDayDetail").textContent.includes("¥38,000"),
-      staffHomeVisible: document.getElementById("roleHomeSummary").textContent.includes("自分の今日") && document.getElementById("roleHomeSummary").textContent.includes("従業員"),
+      staffHomeVisible: document.getElementById("roleHomeSummary").textContent.includes("本日の予定") && document.getElementById("roleHomeSummary").textContent.includes("本日の目標金額"),
       monthPresetActive: document.querySelector('[data-analytics-preset="month"]').classList.contains("active") && document.getElementById("analyticsStartDate").value.endsWith("-01"),
       schedulePromoted: document.querySelector('[data-page="schedule"]').previousElementSibling?.dataset.page === "customers",
       successActionsVisible: document.querySelectorAll("#saleSuccessSummary [data-success-action]").length === 3 && document.getElementById("saleSuccessSummary").textContent.includes("銘柄も自動登録"),
@@ -210,7 +210,7 @@ const path = require("node:path");
     const extraBeforeTotal = Boolean(document.getElementById("extraAmount").compareDocumentPosition(document.getElementById("totalAmount")) & Node.DOCUMENT_POSITION_FOLLOWING);
     const fourthRoundResult = {
       bottomNavOrder: bottomNavLabels === "ホーム,カレンダー,顧客,売上入力,その他",
-      compactHome: !document.getElementById("homeTodaySummary").querySelector(".today-sales") && document.getElementById("homeTodaySummary").textContent.includes("未精算金額"),
+      compactHome: document.getElementById("homeTodaySummary").textContent.trim() === "" && !document.getElementById("roleHomeSummary").textContent.includes("店舗の運営状況"),
       navyGoalFirst: document.querySelector("#page-home > :first-child")?.id === "homeGoalSection" && Boolean(document.querySelector("#homeGoalSection .home-goal-card")),
       requiredMarksCompact: [...document.querySelectorAll("#page-input .required")].every((node) => node.textContent.trim() === "※" && node.getAttribute("aria-label") === "必須"),
       companionsInBasicInfo: companionCard?.textContent.includes("基本情報") && companionCard?.contains(document.getElementById("customerId")),
@@ -333,7 +333,7 @@ const path = require("node:path");
       builtInLegendHidden: true,
     },
     uiThirdRoundResult: {
-      recentCustomerVisible: true,
+      recentCustomerRemoved: true,
       stickySummaryComplete: true,
       selectedStateAccessible: true,
       dailyCashVisible: true,
@@ -403,4 +403,3 @@ const path = require("node:path");
   console.error(error);
   process.exit(1);
 });
-
