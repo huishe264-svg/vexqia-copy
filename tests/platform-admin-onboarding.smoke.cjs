@@ -7,6 +7,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   const root = path.resolve(__dirname, "..");
   const migration = fs.readFileSync(path.join(root, "supabase/migrations/20260903100000_platform_admin_and_store_onboarding.sql"), "utf8");
   const assignmentMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260903110000_assign_platform_admin.sql"), "utf8");
+  const ownerRestoreMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260903120000_restore_ownerless_stores.sql"), "utf8");
   const edge = fs.readFileSync(path.join(root, "supabase/functions/manage-store-members/index.ts"), "utf8");
 
   assert.match(migration, /create table if not exists public\.platform_admins/);
@@ -21,6 +22,9 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   assert.match(assignmentMigration, /from auth\.users auth_user/);
   assert.match(assignmentMigration, /insert into public\.platform_admins/);
   assert.match(assignmentMigration, /select store\.id, administrator_user_id, 'manager'/);
+  assert.match(ownerRestoreMigration, /set role = 'owner'/);
+  assert.match(ownerRestoreMigration, /not exists \([\s\S]*owner_membership\.role = 'owner'/);
+  assert.match(ownerRestoreMigration, /administrator_membership\.role = 'manager'/);
   assert.match(edge, /action === "create-store"/);
   assert.match(edge, /action === "transfer-owner"/);
   assert.match(edge, /callerClient\.rpc\("is_platform_admin"\)/);
