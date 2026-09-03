@@ -72,6 +72,10 @@ Deno.serve(async (req) => {
   }
 
   const action = String(body.action || "");
+  const requestedRedirect = String(body.redirect_url || appUrl);
+  const redirectUrl = requestedRedirect.startsWith("https://huishe264-svg.github.io/")
+    ? requestedRedirect
+    : appUrl;
 
   if (action === "claim") {
     const { data: claimed, error: claimError } = await callerClient.rpc("claim_store_invitations");
@@ -85,6 +89,36 @@ Deno.serve(async (req) => {
       return json({ error: "Invitation claim failed", detail: claimError.message, code: claimError.code }, 409);
     }
     return json({ ok: true, claimed: claimed || [] });
+  }
+
+  const { data: platformAdmin, error: platformAdminError } = await callerClient.rpc("is_platform_admin");
+  if (platformAdminError) {
+    return failure("ADMIN_CHECK_FAILED", "Platform administrator check failed", 500, platformAdminError.message);
+  }
+
+  if (action === "create-store") {
+    if (!platformAdmin) return failure("PLATFORM_ADMIN_REQUIRED", "Only platform administrators can create stores", 403);
+    const storeName = String(body.store_name || "").trim();
+    const ownerEmail = String(body.owner_email || "").trim().toLowerCase();
+    if (!storeName) return failure("STORE_NAME_REQUIRED", "Store name is required");
+    if (!ownerEmail || !ownerEmail.includes("@")) return failure("INVALID_EMAIL", "Valid owner email is required");
+
+    const { data: created, error: createError } = await callerClient.rpc("create_managed_store", {
+      target_name: storeName,
+      target_owner_email: ownerEmail,
+    });
+    if (createError) return failure("STORE_CREATE_FAILED", "Store could not be created", 500, createError.message);
+
+    const { error: emailError } = await mailClient.auth.signInWithOtp({
+      email: ownerEmail,
+      options: { shouldCreateUser: true, emailRedirectTo: redirectUrl },
+    });
+    return json({
+      ok: true,
+      store: created,
+      email_delivery: emailError ? "failed" : "sent",
+      ...(emailError ? { warning: "Store was created, but the owner login email could not be sent" } : {}),
+    });
   }
 
   const storeId = String(body.store_id || "");
@@ -110,8 +144,21 @@ Deno.serve(async (req) => {
     return json({ error: "Member permission check failed" }, 500);
   }
 
-  if (callerMember?.role !== "owner") {
+  if (!platformAdmin && callerMember?.role !== "owner") {
     return json({ error: "Only store owners can manage members" }, 403);
+  }
+
+  if (action === "transfer-owner") {
+    const targetUserId = String(body.target_user_id || "");
+    const previousOwnerAction = String(body.previous_owner_action || "manager");
+    if (!targetUserId) return failure("TARGET_USER_REQUIRED", "New owner is required");
+    const { data: transfer, error: transferError } = await callerClient.rpc("transfer_store_ownership", {
+      target_store_id: storeId,
+      target_user_id: targetUserId,
+      previous_owner_action: previousOwnerAction,
+    });
+    if (transferError) return failure("OWNER_TRANSFER_FAILED", "Ownership transfer failed", 500, transferError.message);
+    return json({ ok: true, transfer });
   }
 
   if (action === "list") {
@@ -141,7 +188,10 @@ Deno.serve(async (req) => {
     const role = String(body.role || "staff");
     const employeeId = body.employee_id ? String(body.employee_id) : null;
     if (!email || !email.includes("@")) return failure("INVALID_EMAIL", "Valid email is required");
-    if (!['manager', 'staff'].includes(role)) return failure("INVALID_ROLE", "Invalid role");
+    if (!['owner', 'manager', 'staff'].includes(role)) return failure("INVALID_ROLE", "Invalid role");
+    if (role === "owner" && !platformAdmin && callerMember?.role !== "owner") {
+      return failure("OWNER_INVITE_FORBIDDEN", "Only the current owner can invite a new owner", 403);
+    }
     if (role === "staff" && !employeeId) {
       return failure("STAFF_EMPLOYEE_REQUIRED", "Staff accounts must be linked to an employee account");
     }
@@ -232,7 +282,7 @@ Deno.serve(async (req) => {
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: appUrl,
+        emailRedirectTo: redirectUrl,
       },
     });
     if (emailError) {
@@ -256,4 +306,3 @@ Deno.serve(async (req) => {
 
   return json({ error: "Unknown action" }, 400);
 });
-

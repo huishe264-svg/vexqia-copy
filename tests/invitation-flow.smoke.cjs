@@ -21,7 +21,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert.match(edge, /mailClient\.auth\.signInWithOtp/);
 assert.match(edge, /callerClient\.rpc\("save_store_invitation"/);
 assert.match(edge, /shouldCreateUser:\s*true/);
-assert.match(edge, /emailRedirectTo:\s*appUrl/);
+assert.match(edge, /emailRedirectTo:\s*redirectUrl/);
 assert.doesNotMatch(edge, /membershipError/);
 assert.doesNotMatch(edge, /INVITATION_FINALIZE_FAILED/);
 assert.match(edge, /callerClient\.rpc\(\s*"get_store_member_directory"/);
@@ -49,4 +49,3 @@ assert.match(html, /ログインメールを送信しました/);
 assert.match(html, /同じメールのGoogleログインで参加できます/);
 
 console.log("Invitation flow checks passed.");
-
