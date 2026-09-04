@@ -87,7 +87,11 @@ const path = require("node:path");
     platformAdminMode = true;
     currentAuthUser = { id: "platform-admin" };
     uiPreviewRole = null;
+    const staleFinanceHome = document.createElement("div");
+    staleFinanceHome.id = "ownerFinanceHome";
+    document.getElementById("homeGoalSection").insertAdjacentElement("afterend", staleFinanceHome);
     setRolePreview("staff");
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const staffPreviewState = {
       actualRoleUnchanged: actualRole() === "admin",
       displayRoleChanged: displayRole() === "staff",
@@ -96,6 +100,7 @@ const path = require("node:path");
       ownerFeaturesHidden: [...document.querySelectorAll("[data-owner-only]")].every((element) => element.classList.contains("hidden")),
       managerFeaturesHidden: [...document.querySelectorAll("[data-manager-only]")].every((element) => element.classList.contains("hidden")),
       employeePreviewLocked: document.getElementById("employeeSelect").disabled && document.getElementById("employeeSelect").value === "employee-1",
+      ownerFinanceHidden: !document.getElementById("ownerFinanceHome"),
     };
     setRolePreview("manager");
     const managerPreviewState = {
@@ -104,7 +109,7 @@ const path = require("node:path");
       managerFeaturesVisible: [...document.querySelectorAll("[data-manager-only]")].every((element) => !element.classList.contains("hidden")),
       ownerFeaturesHidden: [...document.querySelectorAll("[data-owner-only]")].every((element) => element.classList.contains("hidden")),
     };
-    setRolePreview("admin");
+    document.getElementById("exitRolePreviewBtn").click();
     const restoredOwnerState = {
       previewCleared: uiPreviewRole === null && displayRole() === "admin",
       bannerHidden: document.getElementById("rolePreviewBanner").classList.contains("hidden"),
@@ -317,6 +322,7 @@ const path = require("node:path");
         ownerFeaturesHidden: true,
         managerFeaturesHidden: true,
         employeePreviewLocked: true,
+        ownerFinanceHidden: true,
       },
       managerPreviewState: {
         actualRoleUnchanged: true,
