@@ -79,9 +79,17 @@ const path = require("node:path");
     };
 
     uiPreviewRole = null;
+    renderSettings();
+    const ownerSwitcherHidden = document.getElementById("rolePreviewSettings").classList.contains("hidden");
+    setRolePreview("staff");
+    const ownerPreviewBlocked = uiPreviewRole === null && displayRole() === "owner";
+
+    platformAdminMode = true;
+    currentAuthUser = { id: "platform-admin" };
+    uiPreviewRole = null;
     setRolePreview("staff");
     const staffPreviewState = {
-      actualRoleUnchanged: currentStoreMember.role === "owner" && actualRole() === "owner",
+      actualRoleUnchanged: actualRole() === "admin",
       displayRoleChanged: displayRole() === "staff",
       bannerVisible: !document.getElementById("rolePreviewBanner").classList.contains("hidden") && document.getElementById("rolePreviewBannerTitle").textContent.includes("従業員"),
       switcherStillVisible: !document.getElementById("rolePreviewSettings").classList.contains("hidden"),
@@ -91,22 +99,23 @@ const path = require("node:path");
     };
     setRolePreview("manager");
     const managerPreviewState = {
-      actualRoleUnchanged: currentStoreMember.role === "owner",
+      actualRoleUnchanged: actualRole() === "admin",
       displayRoleChanged: displayRole() === "manager",
       managerFeaturesVisible: [...document.querySelectorAll("[data-manager-only]")].every((element) => !element.classList.contains("hidden")),
       ownerFeaturesHidden: [...document.querySelectorAll("[data-owner-only]")].every((element) => element.classList.contains("hidden")),
     };
-    setRolePreview("owner");
+    setRolePreview("admin");
     const restoredOwnerState = {
-      previewCleared: uiPreviewRole === null && displayRole() === "owner",
+      previewCleared: uiPreviewRole === null && displayRole() === "admin",
       bannerHidden: document.getElementById("rolePreviewBanner").classList.contains("hidden"),
       ownerFeaturesVisible: [...document.querySelectorAll("[data-owner-only]")].every((element) => !element.classList.contains("hidden")),
     };
+    platformAdminMode = false;
     currentStoreMember = { user_id: "user-manager", role: "manager", employee_id: null };
     uiPreviewRole = null;
     setRolePreview("staff");
     const nonOwnerBlocked = uiPreviewRole === null && displayRole() === "manager";
-    const previewResult = { staffPreviewState, managerPreviewState, restoredOwnerState, nonOwnerBlocked };
+    const previewResult = { ownerSwitcherHidden, ownerPreviewBlocked, staffPreviewState, managerPreviewState, restoredOwnerState, nonOwnerBlocked };
 
     customers = [{ id: "customer-1", name: "分析顧客", is_active: true, employee_id: "employee-1" }];
     employees = [{ id: "employee-1", name: "テスト従業員", color: "#4D6B5A" }, { id: "employee-2", name: "別の従業員", color: "#625A7B" }];
@@ -298,6 +307,8 @@ const path = require("node:path");
       canEditOther: true,
     },
     previewResult: {
+      ownerSwitcherHidden: true,
+      ownerPreviewBlocked: true,
       staffPreviewState: {
         actualRoleUnchanged: true,
         displayRoleChanged: true,
