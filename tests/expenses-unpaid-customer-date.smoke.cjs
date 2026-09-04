@@ -70,7 +70,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       visitExcludesOtherDay: !visitText.includes("別日顧客"),
       unpaidNeedsNoMethod: unpaidValid && selectedPaymentMethod === null,
       paymentMethodHidden: document.getElementById("paymentMethodField").classList.contains("hidden"),
-      expenseInputOutsideSettlement: expenseUi.includes("経費を入力") && expenseUi.includes("レジ金から差し引く"),
+      expenseInputOutsideSettlement: !expenseUi.includes("経費を入力") && Boolean(document.querySelector('[data-page="finance"]')),
       expenseHistoryLabel: expenseUi.includes("経費"),
       customerFormReset: !document.getElementById("newCustomerName").value && !document.getElementById("newCustomerKana").value && !document.getElementById("newCustomerNotes").value,
     };

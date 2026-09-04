@@ -90,6 +90,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
   <button class="drawer-link hidden" data-manager-only data-page="sales" data-title="精算">日別精算</button>
   <button class="drawer-link" data-page="analytics" data-title="売上分析">売上分析</button>
   <button class="drawer-link" data-page="unpaid" data-title="未収リスト">未収リスト</button>
+  <button class="drawer-link hidden" data-owner-only data-page="finance" data-title="経費・収支">経費・収支</button>
   <div class="drawer-group">店舗設定・管理</div>
   <button class="drawer-link hidden" data-manager-only data-page="employees" data-title="従業員（口座）管理">従業員（口座）管理</button>
   <button class="drawer-link hidden" data-manager-only data-page="bottle-master" data-title="ボトル銘柄管理">ボトル銘柄管理</button>
@@ -120,6 +121,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
 <section id="page-customers" class="page"><div id="customerListControls"><div class="row" style="margin-bottom:8px"><input id="customerListSearch" placeholder="顧客名・よみで検索"><button class="small-btn" id="customerListAddBtn">＋ 顧客</button></div><div class="customer-date-filter"><label for="customerVisitDate">来店日で検索</label><div class="row"><input type="date" id="customerVisitDate"><button class="small-btn" id="clearCustomerVisitDate">解除</button></div><div id="customerVisitDateSummary" class="hint"></div></div></div><div id="customerList" class="list"></div><div id="customerDetail" class="hidden"></div></section>
 <section id="page-bottles" class="page"><div class="toolbar"><input id="bottleListSearch" placeholder="顧客名・銘柄・番号で検索"></div><div id="bottleList" class="list"></div></section>
 <section id="page-unpaid" class="page"><div id="unpaidMetrics" class="metrics"></div><div id="unpaidList" class="list"></div></section>
+<section id="page-finance" class="page"><div id="ownerFinanceRoot"></div></section>
 <section id="page-schedule" class="page"><div class="card"><div class="row"><div><div class="section-title">本日の予約</div></div><button class="small-btn" id="newScheduleBtn">＋ 予定</button></div><div id="todayReservations" style="margin-top:8px"></div></div><div class="card"><div class="calendar-head"><button id="calendarPrev">‹</button><strong id="calendarTitle"></strong><button id="calendarNext">›</button></div><div id="calendarGrid" class="calendar-grid"></div></div><div class="card"><div class="row" style="align-items:center"><div class="section-title" id="selectedDateTitle" style="margin:0">選択日の予定</div><button class="small-btn" id="addSelectedDateScheduleBtn">＋ 追加</button></div><div id="selectedDateSchedules" style="margin-top:10px"></div></div></section>
 <section id="page-employees" class="page"><p class="page-intro">売上入力で選択する口座を追加・確認できます。</p><div class="card"><div class="row"><input id="newEmployeeName" placeholder="追加する従業員名"><button id="addEmployeeBtn" class="small-btn">＋ 追加</button></div><div id="employeeCreateError" class="field-error"></div></div><div id="employeeList" class="list"></div></section>
 <section id="page-bottle-master" class="page"><p class="page-intro">店舗専用の銘柄マスターです。停止した銘柄は売上入力の候補に表示されません。</p><div class="card"><div class="row"><input id="newBottleBrandName" placeholder="追加する銘柄名"><button id="addBottleBrandBtn" class="small-btn">＋ 追加</button></div><div id="bottleBrandError" class="field-error"></div></div><div id="bottleMasterList" class="list"></div></section>
@@ -579,7 +581,8 @@ renderSalesDay=function(date){currentSalesDate=date;const rows=sales.filter(s=>s
 settlePendingSales=async function(date,pending){const button=$("settlePendingBtn"),ids=pending.map(s=>s.id);button.disabled=true;button.textContent="精算中...";const{data,error}=await db.rpc("settle_store_sales",{target_store_id:storeId,target_business_date:date,target_sale_ids:ids,target_consumables_amount:0});if(error){button.disabled=false;button.textContent=`${pending.length}件をまとめて精算`;return showStatus(error.message||"精算できませんでした","error")}await loadAll();renderSalesDay(date);const delta=Number(data?.settlement?.settled_cash_net_amount||0);showStatus(delta>0?`精算しました。レジ金に${yen(delta)}を加算しました。`:delta<0?`精算しました。レジ金から${yen(Math.abs(delta))}を差し引きました。`:"精算しました。","success")};
 closeEmptyBusinessDay=async function(date){if(!(await appConfirm(`${date}を売上0件で精算済みにしますか？`,"精算済みにする")))return;const button=$("closeEmptyDayBtn");button.disabled=true;button.textContent="精算中...";const{error}=await db.rpc("close_empty_business_day",{target_store_id:storeId,target_business_date:date,target_consumables_amount:0});if(error){button.disabled=false;button.textContent="売上0件で精算済みにする";return showStatus(error.message||"精算できませんでした","error")}await loadAll();renderSalesDay(date);showStatus("売上0件で精算済みにしました。","success")};
 
-startApp();
 </script>
+<script src="./owner-finance.js"></script>
+<script>startApp();</script>
 </body>
 </html>
