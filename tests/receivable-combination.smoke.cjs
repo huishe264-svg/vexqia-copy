@@ -1,0 +1,20 @@
+const fs=require('fs');
+const assert=require('assert');
+const html=fs.readFileSync('index.html','utf8');
+const js=fs.readFileSync('sale-receivables.js','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260905120000_receivable_combination_and_companions.sql','utf8');
+
+assert(html.includes('id="receivableCombineCard"'),'sale input must include the receivable card');
+assert(html.includes('src="./sale-receivables.js"'),'receivable behaviour must load');
+assert(js.includes('前回の未収を含む'),'combined-receipt action must be visible');
+assert(js.includes('実際の伝票金額'),'actual receipt amount must remain user controlled');
+assert(js.includes('attach_receivables_to_sale'),'combined sale must link through an atomic RPC');
+assert(js.includes('collect_receivable_payment'),'standalone collection must create dated revenue');
+assert(js.includes('replace_sale_companions'),'companions must be editable after sale registration');
+assert(js.includes('delete_sale_with_receivable_restore'),'deleting a receipt must restore linked unpaid sales');
+assert(js.includes('!sale.recognized_via_sale_id'),'linked historical rows must be excluded from revenue');
+assert(migration.includes("record_type in ('sale','combined_sale','receivable_payment')"));
+assert(migration.includes('unique(receivable_sale_id)'),'one unpaid sale cannot be collected twice');
+assert(migration.includes("payment_status='未収',payment_method=null,recognized_via_sale_id=null"),'delete rollback must reopen unpaid history');
+assert(migration.includes('prevent_settling_recognized_receivable'),'linked historical sales must not be settled twice');
+console.log('Receivable combination and companion editing checks passed.');
