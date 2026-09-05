@@ -1,6 +1,6 @@
 (() => {
   const CATEGORIES=["仕入","酒類","出前","タバコ","消耗品","広告宣伝費","交通費","接待交際費","家賃","水道光熱費","通信費","給与関連","外注費","その他"];
-  let financeMonth=dateString().slice(0,7),financeTab="summary",financeExpenses=[],financeReceipts=[],editingExpenseId=null;
+  let financeMonth=null,financeTab="summary",financeExpenses=[],financeReceipts=[],editingExpenseId=null;
   const categoryOptions=value=>CATEGORIES.map(x=>`<option ${x===value?"selected":""}>${esc(x)}</option>`).join("");
   const monthBounds=month=>({start:`${month}-01`,end:dateString(new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0))});
   const receiptFor=id=>financeReceipts.find(r=>r.expense_id===id);
@@ -24,7 +24,7 @@
   `;document.head.appendChild(style)}
 
   async function renderFinance(){
-    const root=$("ownerFinanceRoot");if(!root)return;if(!isOwner()){root.innerHTML='<div class="empty">この画面はオーナーのみ利用できます</div>';return}
+    const root=$("ownerFinanceRoot");if(!root)return;if(!isOwner()){root.innerHTML='<div class="empty">この画面はオーナーのみ利用できます</div>';return}if(!financeMonth)financeMonth=businessDateString().slice(0,7);
     root.innerHTML='<div class="empty">読み込み中...</div>';
     try{await loadFinanceExpenses();const summary=await monthlyFinance();root.innerHTML=`<div class="finance-tabs"><button data-ft="summary" class="${financeTab==="summary"?"active":""}">月次収支</button><button data-ft="expenses" class="${financeTab==="expenses"?"active":""}">経費</button><button data-ft="export" class="${financeTab==="export"?"active":""}">税理士用</button></div><div class="card"><div class="finance-month"><input type="month" id="financeMonth" value="${financeMonth}"><button class="small-btn" id="financeMonthApply">表示</button></div></div><div id="financeBody"></div>`;root.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>{financeTab=b.dataset.ft;void renderFinance()});$("financeMonthApply").onclick=()=>{financeMonth=$("financeMonth").value||financeMonth;void renderFinance()};if(financeTab==="summary")renderFinanceSummary(summary);if(financeTab==="expenses")renderExpenseManager();if(financeTab==="export")renderFinanceExport()}catch(e){root.innerHTML=`<div class="status show error">${esc(e.message||String(e))}</div>`}
   }
@@ -51,7 +51,7 @@
       $("homeGoalSection").insertAdjacentElement("afterend",box);
     }
     try{
-      const currentMonth=dateString().slice(0,7),today=dateString();
+      const currentMonth=businessDateString().slice(0,7),today=businessDateString();
       await loadFinanceExpenses();
       const s=await monthlyFinance(currentMonth),profit=Number(s.total_sales||0)-Number(s.expense_total||0);
       const todaySales=settledActualForRows(sales.filter(x=>x.business_date===today));
