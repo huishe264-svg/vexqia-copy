@@ -58,6 +58,12 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
 
     renderCashRegister();
     const expenseUi = document.getElementById("cashRegisterSection").textContent;
+    document.getElementById("addSimpleExpenseAmount").click();
+    const simpleInputs = [...document.querySelectorAll(".simple-expense-amount")];
+    simpleInputs[0].value = "2400";
+    simpleInputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    simpleInputs[1].value = "1180";
+    simpleInputs[1].dispatchEvent(new Event("input", { bubbles: true }));
 
     document.getElementById("newCustomerName").value = "前の顧客";
     document.getElementById("newCustomerKana").value = "まえ";
@@ -72,6 +78,8 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       paymentMethodHidden: document.getElementById("paymentMethodField").classList.contains("hidden"),
       expenseInputOutsideSettlement: !expenseUi.includes("経費を入力") && Boolean(document.querySelector('[data-page="finance"]')),
       expenseHistoryLabel: expenseUi.includes("経費"),
+      simpleExpenseHasNoCategory: !document.getElementById("expenseCategory") && !document.getElementById("expenseDescription"),
+      simpleExpenseMultipleAmounts: simpleInputs.length === 2 && document.getElementById("simpleExpenseTotal").textContent === "¥3,580",
       customerFormReset: !document.getElementById("newCustomerName").value && !document.getElementById("newCustomerKana").value && !document.getElementById("newCustomerNotes").value,
     };
   });
@@ -84,6 +92,8 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     paymentMethodHidden: true,
     expenseInputOutsideSettlement: true,
     expenseHistoryLabel: true,
+    simpleExpenseHasNoCategory: true,
+    simpleExpenseMultipleAmounts: true,
     customerFormReset: true,
   });
   console.log("Expenses, unpaid payment, and customer visit-date checks passed.");
