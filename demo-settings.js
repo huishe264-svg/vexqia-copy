@@ -1,8 +1,9 @@
 // Configurable operating profile. It is enabled only for the dedicated sales demo store.
 let storeOperatingSettings=null;
-const DEFAULT_OPERATING_SETTINGS={goal_mode:"daily_calculation",account_label:"口座",deduction_label:"出前・タバコ等",payment_methods:["現金","カード"],bottle_management_enabled:true,cash_register_enabled:true};
+const DEFAULT_OPERATING_SETTINGS={goal_mode:"daily_calculation",account_label:"口座",deduction_label:"出前・タバコ等",payment_methods:["現金","カード"],bottle_management_enabled:true,cash_register_enabled:true,expense_management_mode:"simple"};
 const demoSettingsEnabled=()=>Boolean(storeOperatingSettings?.demo_configuration_enabled);
 const operatingValue=key=>demoSettingsEnabled()?(storeOperatingSettings[key]??DEFAULT_OPERATING_SETTINGS[key]):DEFAULT_OPERATING_SETTINGS[key];
+const expenseManagementMode=()=>storeOperatingSettings?.expense_management_mode||DEFAULT_OPERATING_SETTINGS.expense_management_mode;
 
 document.head.insertAdjacentHTML("beforeend",`<style>
 .demo-settings-card{border-color:#d8c08a}.demo-settings-badge{display:inline-flex;padding:3px 8px;margin-left:6px;border-radius:999px;background:#fff3d6;color:#70521d;font-size:11px;font-weight:800}
@@ -62,12 +63,29 @@ function renderDemoOperatingSettings(){
   $("saveDemoOperatingSettings").onclick=async()=>{const methods=[...card.querySelectorAll("[data-demo-payment]:checked")].map(input=>input.dataset.demoPayment),account=$("demoAccountLabel").value.trim(),deduction=$("demoDeductionLabel").value.trim();if(!account||!deduction||!methods.length)return showStatus("呼び方・控除項目名・支払方法を確認してください","error");const button=$("saveDemoOperatingSettings");button.disabled=true;const result=await db.from("store_operating_settings").upsert({store_id:storeId,demo_configuration_enabled:true,goal_mode:$("demoGoalMode").value,account_label:account,deduction_label:deduction,payment_methods:methods,bottle_management_enabled:$("demoBottleEnabled").checked,cash_register_enabled:$("demoCashEnabled").checked,updated_by:currentAuthUser.id,updated_at:new Date().toISOString()},{onConflict:"store_id"}).select("*").single();button.disabled=false;if(result.error)return showStatus(result.error.message||"店舗運用設定を保存できませんでした","error");storeOperatingSettings=result.data;renderDemoOperatingSettings();applyDemoOperatingSettings();renderHome();showStatus("営業デモ店舗の運用設定を保存しました","success")}
 }
 
+function renderExpenseManagementSettings(){
+  let card=$("expenseManagementSettings");
+  if(!isOwnerOrManager()){card?.remove();return}
+  if(!card){
+    card=document.createElement("div");card.id="expenseManagementSettings";card.className="card";
+    const storeCard=$("settingsStoreName")?.closest(".card");storeCard?.insertAdjacentElement("afterend",card)
+  }
+  const mode=expenseManagementMode();
+  card.innerHTML=`<div class="section-title">経費管理の使い方</div><div class="field"><label>管理方法</label><select id="expenseManagementMode"><option value="simple" ${mode==="simple"?"selected":""}>簡易管理（レジ金から支払った分だけ）</option><option value="full" ${mode==="full"?"selected":""}>完全管理（すべての経費・領収書・月次収支）</option><option value="disabled" ${mode==="disabled"?"selected":""}>経費管理を使用しない</option></select></div><div class="permission-note" style="margin-bottom:10px">簡易管理では、レジ金から支払った経費だけを日別精算画面で記録します。領収書画像・利益参考値・詳細な経費管理画面は表示しません。</div><button type="button" class="secondary" id="saveExpenseManagementMode">経費管理の設定を保存</button>`;
+  $("saveExpenseManagementMode").onclick=async()=>{
+    const button=$("saveExpenseManagementMode"),selected=$("expenseManagementMode").value;button.disabled=true;
+    const result=await db.from("store_operating_settings").upsert({store_id:storeId,expense_management_mode:selected,updated_by:currentAuthUser.id,updated_at:new Date().toISOString()},{onConflict:"store_id"}).select("*").single();
+    button.disabled=false;if(result.error)return showStatus(result.error.message||"経費管理の設定を保存できませんでした","error");
+    storeOperatingSettings=result.data;applyRoleNavigation();renderSalesDashboard();renderHome();showStatus("経費管理の設定を保存しました","success")
+  }
+}
+
 const renderSettingsBeforeDemo=renderSettings;
-renderSettings=function(){renderSettingsBeforeDemo();renderDemoOperatingSettings();applyDemoOperatingSettings()};
+renderSettings=function(){renderSettingsBeforeDemo();renderExpenseManagementSettings();renderDemoOperatingSettings();applyDemoOperatingSettings()};
 const renderSalesDayBeforeDemoSettings=renderSalesDay;
 renderSalesDay=function(date){renderSalesDayBeforeDemoSettings(date);if(demoSettingsEnabled())replaceTextIn($("salesDayDetail"),"出前・タバコ等",operatingValue("deduction_label"))};
 const openSaleEditorBeforeDemoSettings=openSaleEditor;
 openSaleEditor=function(id){openSaleEditorBeforeDemoSettings(id);if(!demoSettingsEnabled())return;const methods=operatingValue("payment_methods");for(const select of [$("editSaleMethod"),$("recoveryMethod")]){if(!select)continue;const current=select.value;select.innerHTML='<option value="">選択してください</option>'+methods.map(method=>`<option ${method===current?"selected":""}>${esc(method)}</option>`).join("")}replaceTextIn($("saleEditBody"),"出前・タバコ等",operatingValue("deduction_label"))};
 
 const loadAllBeforeDemoSettings=loadAll;
-loadAll=async function(){await loadAllBeforeDemoSettings();const result=await db.from("store_operating_settings").select("*").eq("store_id",storeId).maybeSingle();if(result.error)throw result.error;storeOperatingSettings=result.data||null;renderDemoOperatingSettings();applyDemoOperatingSettings();if(currentPage==="home")renderHome()};
+loadAll=async function(){await loadAllBeforeDemoSettings();const result=await db.from("store_operating_settings").select("*").eq("store_id",storeId).maybeSingle();if(result.error)throw result.error;storeOperatingSettings=result.data||null;renderExpenseManagementSettings();renderDemoOperatingSettings();applyDemoOperatingSettings();applyRoleNavigation();if(currentPage==="home")renderHome()};

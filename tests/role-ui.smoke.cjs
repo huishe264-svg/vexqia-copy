@@ -24,6 +24,7 @@ const path = require("node:path");
   await page.goto(`file:///${path.resolve(__dirname, "../index.html").replaceAll("\\", "/")}`);
 
   const result = await page.evaluate(async () => {
+    storeOperatingSettings = { expense_management_mode: "full" };
     currentAuthUser = { id: "user-staff" };
     currentStoreMember = { user_id: "user-staff", role: "staff", employee_id: "employee-1" };
     employees = [{ id: "employee-1", name: "テスト従業員" }, { id: "employee-2", name: "別の従業員" }];

@@ -1,0 +1,20 @@
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
+const root=path.resolve(__dirname,"..");
+const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
+const finance=fs.readFileSync(path.join(root,"owner-finance.js"),"utf8");
+const settings=fs.readFileSync(path.join(root,"demo-settings.js"),"utf8");
+const edge=fs.readFileSync(path.join(root,"supabase/functions/manage-store-members/index.ts"),"utf8");
+const migration=fs.readFileSync(path.join(root,"supabase/migrations/20260908100000_expense_management_modes.sql"),"utf8");
+
+assert.match(migration,/expense_management_mode in \('simple', 'full', 'disabled'\)/);
+assert.match(html,/id="adminExpenseManagementMode"/);
+assert.match(html,/レジ金から支払った経費/);
+assert.match(html,/領収書画像の添付はありません/);
+assert.match(html,/target_payment_method:"現金"/);
+assert.match(settings,/const expenseManagementMode=/);
+assert.match(settings,/簡易管理（レジ金から支払った分だけ）/);
+assert.match(settings,/完全管理（すべての経費・領収書・月次収支）/);
+assert.match(finance,/expenseManagementMode\(\)!=="full"/);
+assert.match(finance,/expenseManagementMode\(\)==="simple"\?quickExpenseCashRegister\(\):cashRegisterWithoutExpense\(\)/);
+assert.match(edge,/expense_management_mode: expenseManagementMode/);
+console.log("Expense management mode checks passed.");

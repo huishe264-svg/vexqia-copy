@@ -100,14 +100,26 @@ Deno.serve(async (req) => {
     if (!platformAdmin) return failure("PLATFORM_ADMIN_REQUIRED", "Only platform administrators can create stores", 403);
     const storeName = String(body.store_name || "").trim();
     const ownerEmail = String(body.owner_email || "").trim().toLowerCase();
+    const expenseManagementMode = String(body.expense_management_mode || "simple");
     if (!storeName) return failure("STORE_NAME_REQUIRED", "Store name is required");
     if (!ownerEmail || !ownerEmail.includes("@")) return failure("INVALID_EMAIL", "Valid owner email is required");
+    if (!["simple", "full", "disabled"].includes(expenseManagementMode)) {
+      return failure("INVALID_EXPENSE_MODE", "Valid expense management mode is required");
+    }
 
     const { data: created, error: createError } = await callerClient.rpc("create_managed_store", {
       target_name: storeName,
       target_owner_email: ownerEmail,
     });
     if (createError) return failure("STORE_CREATE_FAILED", "Store could not be created", 500, createError.message);
+
+    const { error: settingsError } = await callerClient.from("store_operating_settings").upsert({
+      store_id: created.store_id,
+      expense_management_mode: expenseManagementMode,
+      updated_by: userData.user.id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "store_id" });
+    if (settingsError) return failure("STORE_SETTINGS_FAILED", "Store was created but its operating settings could not be saved", 500, settingsError.message);
 
     const { error: emailError } = await mailClient.auth.signInWithOtp({
       email: ownerEmail,

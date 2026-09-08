@@ -24,7 +24,7 @@
   `;document.head.appendChild(style)}
 
   async function renderFinance(){
-    const root=$("ownerFinanceRoot");if(!root)return;if(!isOwner()){root.innerHTML='<div class="empty">この画面はオーナーのみ利用できます</div>';return}if(!financeMonth)financeMonth=businessDateString().slice(0,7);
+    const root=$("ownerFinanceRoot");if(!root)return;if(!isOwner()||expenseManagementMode()!=="full"){root.innerHTML='<div class="empty">完全管理を選択した店舗だけ利用できます</div>';return}if(!financeMonth)financeMonth=businessDateString().slice(0,7);
     root.innerHTML='<div class="empty">読み込み中...</div>';
     try{await loadFinanceExpenses();const summary=await monthlyFinance();root.innerHTML=`<div class="finance-tabs"><button data-ft="summary" class="${financeTab==="summary"?"active":""}">月次収支</button><button data-ft="expenses" class="${financeTab==="expenses"?"active":""}">経費</button><button data-ft="export" class="${financeTab==="export"?"active":""}">税理士用</button></div><div class="card"><div class="finance-month"><input type="month" id="financeMonth" value="${financeMonth}"><button class="small-btn" id="financeMonthApply">表示</button></div></div><div id="financeBody"></div>`;root.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>{financeTab=b.dataset.ft;void renderFinance()});$("financeMonthApply").onclick=()=>{financeMonth=$("financeMonth").value||financeMonth;void renderFinance()};if(financeTab==="summary")renderFinanceSummary(summary);if(financeTab==="expenses")renderExpenseManager();if(financeTab==="export")renderFinanceExport()}catch(e){root.innerHTML=`<div class="status show error">${esc(e.message||String(e))}</div>`}
   }
@@ -44,7 +44,7 @@
   function renderFinanceExport(){const {start,end}=monthBounds(financeMonth);$("financeBody").innerHTML=`<div class="card"><div class="section-title">税理士提出用データ</div><div class="finance-form-grid"><div class="field"><label>開始日</label><input type="date" id="exportStart" value="${start}"></div><div class="field"><label>終了日</label><input type="date" id="exportEnd" value="${end}"></div></div><button class="primary" id="exportExpenseCsv">経費CSVを出力</button><button class="secondary" id="exportTaxSalesCsv" style="margin-top:8px">売上CSVを出力</button><div class="finance-note" style="margin-top:10px">CSVは税理士との確認用資料です。税務申告の内容を確定するものではありません。領収書画像は経費一覧から期間別に確認できます。</div></div>`;$("exportExpenseCsv").onclick=async()=>{try{const start=$("exportStart").value,end=$("exportEnd").value,rows=await pagedQuery("expenses",start,end);downloadCsv(`経費_${start}_${end}.csv`,["日付","支払先","金額","カテゴリ","支払方法","メモ","領収書有無","税理士用科目"],rows.map(x=>[x.expense_date,x.vendor,x.amount,x.category,x.payment_method,x.memo,receiptFor(x.id)?"あり":"なし",x.accounting_category]))}catch(e){showStatus(e.message,"error")}};$("exportTaxSalesCsv").onclick=async()=>{try{const start=$("exportStart").value,end=$("exportEnd").value,rows=(await pagedQuery("sales",start,end)).filter(x=>!x.recognized_via_sale_id);downloadCsv(`売上_${start}_${end}.csv`,["営業日","売上ID","合計金額","出前・タバコ等","売上実績参考","会計状態","支払方法","精算状態","備考"],rows.map(x=>[x.business_date,x.id,x.total_amount,x.delivery_tobacco_amount,Number(x.total_amount)-Number(x.delivery_tobacco_amount||0),x.payment_status,x.payment_method||"",x.is_settled?"精算済み":"未精算",x.notes]))}catch(e){showStatus(e.message,"error")}}}
 
   async function renderOwnerFinanceHome(){
-    if(!isOwner()){$("ownerFinanceHome")?.remove();return;}
+    if(!isOwner()||expenseManagementMode()!=="full"){$("ownerFinanceHome")?.remove();return;}
     let box=$("ownerFinanceHome");
     if(!box){
       box=document.createElement("div");box.id="ownerFinanceHome";box.className="owner-finance-home";
@@ -64,9 +64,11 @@
   }
 
   const oldRenderPage=renderPage;renderPage=function(page){if(page==="finance")return void renderFinance();return oldRenderPage(page)};
-  const oldGoToPage=goToPage;goToPage=function(page,title){if(page==="finance"&&!isOwner()){showStatus("この画面はオーナーのみ利用できます","error");return oldGoToPage("home","ホーム")}const result=oldGoToPage(page,title);if(page==="finance")requestAnimationFrame(()=>void renderFinance());return result};
+  const oldGoToPage=goToPage;goToPage=function(page,title){if(page==="finance"&&(!isOwner()||expenseManagementMode()!=="full")){showStatus("経費の完全管理を選択した店舗だけ利用できます","error");return oldGoToPage("home","ホーム")}const result=oldGoToPage(page,title);if(page==="finance")requestAnimationFrame(()=>void renderFinance());return result};
   const oldRenderHome=renderHome;renderHome=function(){oldRenderHome();void renderOwnerFinanceHome()};
-  const oldApplyRoleNavigation=applyRoleNavigation;applyRoleNavigation=function(){oldApplyRoleNavigation();if(currentPage==="finance"&&!isOwner())currentPage="home"};
-  if(typeof renderCashRegisterBeforeExpenses==="function")renderCashRegister=renderCashRegisterBeforeExpenses;
+  const oldApplyRoleNavigation=applyRoleNavigation;applyRoleNavigation=function(){oldApplyRoleNavigation();const enabled=isOwner()&&expenseManagementMode()==="full";document.querySelectorAll('[data-page="finance"]').forEach(element=>element.classList.toggle("hidden",!enabled));if(currentPage==="finance"&&!enabled)currentPage="home"};
+  const quickExpenseCashRegister=renderCashRegister;
+  const cashRegisterWithoutExpense=typeof renderCashRegisterBeforeExpenses==="function"?renderCashRegisterBeforeExpenses:renderCashRegister;
+  renderCashRegister=function(){return expenseManagementMode()==="simple"?quickExpenseCashRegister():cashRegisterWithoutExpense()};
   injectStyle();
 })();
