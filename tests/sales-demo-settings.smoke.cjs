@@ -12,7 +12,7 @@ assert(js.includes('残り営業日あたり必要額'),'monthly direct goals ne
 assert(js.includes('account_label')&&js.includes('deduction_label'),'store terminology must be configurable');
 assert(js.includes('payment_methods'),'payment methods must be configurable');
 assert(js.includes('bottle_management_enabled')&&js.includes('cash_register_enabled'),'optional modules must be configurable');
-assert(js.includes('expense_management_mode')&&js.includes('簡易管理（レジ金から支払った分だけ）'),'expense management mode must be configurable');
+assert(js.includes('expense_management_mode')&&js.includes('簡易管理（備品・消耗品だけ）'),'expense management mode must be configurable');
 assert(sql.includes('store_operating_settings'),'operating settings table must exist');
 assert(sql.includes("where name='営業デモ店舗'"),'only the sales demo store must be seeded');
 assert(sql.includes("demo_configuration_enabled=true"),'demo feature gate must be enabled only by its row');

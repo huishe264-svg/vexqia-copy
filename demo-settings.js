@@ -1,9 +1,13 @@
 // Configurable operating profile. It is enabled only for the dedicated sales demo store.
 let storeOperatingSettings=null;
-const DEFAULT_OPERATING_SETTINGS={goal_mode:"daily_calculation",account_label:"口座",deduction_label:"出前・タバコ等",payment_methods:["現金","カード"],bottle_management_enabled:true,cash_register_enabled:true,expense_management_mode:"simple"};
+const DEFAULT_OPERATING_SETTINGS={goal_mode:"daily_calculation",account_label:"口座",deduction_label:"出前・タバコ等",payment_methods:["現金","カード"],bottle_management_enabled:true,cash_register_enabled:true,expense_management_mode:"simple",manager_simple_expense_permission:"create",staff_simple_expense_permission:"none"};
 const demoSettingsEnabled=()=>Boolean(storeOperatingSettings?.demo_configuration_enabled);
 const operatingValue=key=>demoSettingsEnabled()?(storeOperatingSettings[key]??DEFAULT_OPERATING_SETTINGS[key]):DEFAULT_OPERATING_SETTINGS[key];
 const expenseManagementMode=()=>storeOperatingSettings?.expense_management_mode||DEFAULT_OPERATING_SETTINGS.expense_management_mode;
+const simpleExpensePermissionLevel=()=>{const role=displayRole();if(["owner","admin"].includes(role))return"manage";if(role==="manager")return storeOperatingSettings?.manager_simple_expense_permission||DEFAULT_OPERATING_SETTINGS.manager_simple_expense_permission;if(role==="staff")return storeOperatingSettings?.staff_simple_expense_permission||DEFAULT_OPERATING_SETTINGS.staff_simple_expense_permission;return"none"};
+const canSimpleExpenseCreate=()=>expenseManagementMode()==="simple"&&["create","manage"].includes(simpleExpensePermissionLevel());
+const canSimpleExpenseManage=()=>expenseManagementMode()==="simple"&&simpleExpensePermissionLevel()==="manage";
+const simpleExpensePermissionOptions=selected=>`<option value="none" ${selected==="none"?"selected":""}>利用不可</option><option value="create" ${selected==="create"?"selected":""}>登録のみ</option><option value="manage" ${selected==="manage"?"selected":""}>登録・編集・削除</option>`;
 
 document.head.insertAdjacentHTML("beforeend",`<style>
 .demo-settings-card{border-color:#d8c08a}.demo-settings-badge{display:inline-flex;padding:3px 8px;margin-left:6px;border-radius:999px;background:#fff3d6;color:#70521d;font-size:11px;font-weight:800}
@@ -65,20 +69,30 @@ function renderDemoOperatingSettings(){
 
 function renderExpenseManagementSettings(){
   let card=$("expenseManagementSettings");
-  if(!isOwnerOrManager()){card?.remove();return}
+  if(!isOwner()){card?.remove();return}
   if(!card){
     card=document.createElement("div");card.id="expenseManagementSettings";card.className="card";
     const storeCard=$("settingsStoreName")?.closest(".card");storeCard?.insertAdjacentElement("afterend",card)
   }
-  const mode=expenseManagementMode();
-  card.innerHTML=`<div class="section-title">経費管理の使い方</div><div class="field"><label>管理方法</label><select id="expenseManagementMode"><option value="simple" ${mode==="simple"?"selected":""}>簡易管理（レジ金から支払った分だけ）</option><option value="full" ${mode==="full"?"selected":""}>完全管理（すべての経費・領収書・月次収支）</option><option value="disabled" ${mode==="disabled"?"selected":""}>経費管理を使用しない</option></select></div><div class="permission-note" style="margin-bottom:10px">簡易管理では、レジ金から支払った経費だけを日別精算画面で記録します。領収書画像・利益参考値・詳細な経費管理画面は表示しません。</div><button type="button" class="secondary" id="saveExpenseManagementMode">経費管理の設定を保存</button>`;
+  const mode=expenseManagementMode(),managerPermission=storeOperatingSettings?.manager_simple_expense_permission||DEFAULT_OPERATING_SETTINGS.manager_simple_expense_permission,staffPermission=storeOperatingSettings?.staff_simple_expense_permission||DEFAULT_OPERATING_SETTINGS.staff_simple_expense_permission;
+  card.innerHTML=`<div class="section-title">経費管理の使い方</div><div class="field"><label>管理方法</label><select id="expenseManagementMode"><option value="simple" ${mode==="simple"?"selected":""}>簡易管理（備品・消耗品だけ）</option><option value="full" ${mode==="full"?"selected":""}>完全管理（すべての経費・領収書・月次収支）</option><option value="disabled" ${mode==="disabled"?"selected":""}>経費管理を使用しない</option></select></div><div id="simpleExpensePermissionSettings" class="${mode==="simple"?"":"hidden"}"><div class="section-title" style="margin-top:14px">備品・消耗品の操作権限</div><div class="field"><label>店長</label><select id="managerSimpleExpensePermission">${simpleExpensePermissionOptions(managerPermission)}</select></div><div class="field"><label>従業員</label><select id="staffSimpleExpensePermission">${simpleExpensePermissionOptions(staffPermission)}</select></div><div class="permission-note" style="margin-bottom:12px">オーナーは常に登録・編集・削除ができます。操作した人と日時はレジ金履歴に残ります。</div></div><div class="permission-note" style="margin-bottom:10px">簡易管理では、売上入力で記録済みの出前・タバコを除き、レジ金から支払った備品・消耗品だけを記録します。</div><button type="button" class="secondary" id="saveExpenseManagementMode">経費管理の設定を保存</button>`;
+  $("expenseManagementMode").onchange=()=>$("simpleExpensePermissionSettings").classList.toggle("hidden",$("expenseManagementMode").value!=="simple");
   $("saveExpenseManagementMode").onclick=async()=>{
-    const button=$("saveExpenseManagementMode"),selected=$("expenseManagementMode").value;button.disabled=true;
-    const result=await db.from("store_operating_settings").upsert({store_id:storeId,expense_management_mode:selected,updated_by:currentAuthUser.id,updated_at:new Date().toISOString()},{onConflict:"store_id"}).select("*").single();
+    const button=$("saveExpenseManagementMode"),selected=$("expenseManagementMode").value,managerPermission=$("managerSimpleExpensePermission").value,staffPermission=$("staffSimpleExpensePermission").value;button.disabled=true;
+    const result=await db.rpc("set_simple_expense_configuration",{target_store_id:storeId,target_expense_management_mode:selected,target_manager_permission:managerPermission,target_staff_permission:staffPermission});
     button.disabled=false;if(result.error)return showStatus(result.error.message||"経費管理の設定を保存できませんでした","error");
     storeOperatingSettings=result.data;applyRoleNavigation();renderSalesDashboard();renderHome();showStatus("経費管理の設定を保存しました","success")
   }
 }
+
+function applySimpleExpensePermissionNavigation(){
+  const staffAccess=displayRole()==="staff"&&canSimpleExpenseCreate(),salesLink=document.querySelector('.drawer-link[data-page="sales"]'),homeButton=$("homeAddScheduleBtn");
+  if(displayRole()==="staff")salesLink?.classList.toggle("hidden",!staffAccess);
+  if(homeButton&&displayRole()==="staff"){homeButton.classList.toggle("hidden",!staffAccess);homeButton.textContent="備品・消耗品"}else if(homeButton)homeButton.textContent="日別精算";
+}
+
+const applyRoleNavigationBeforeSimpleExpenses=applyRoleNavigation;
+applyRoleNavigation=function(){applyRoleNavigationBeforeSimpleExpenses();applySimpleExpensePermissionNavigation()};
 
 const renderSettingsBeforeDemo=renderSettings;
 renderSettings=function(){renderSettingsBeforeDemo();renderExpenseManagementSettings();renderDemoOperatingSettings();applyDemoOperatingSettings()};
