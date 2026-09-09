@@ -4,7 +4,7 @@ const html=fs.readFileSync('index.html','utf8');
 const js=fs.readFileSync('demo-settings.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20260905140000_sales_demo_operating_settings.sql','utf8');
 
-assert(html.includes('src="./demo-settings.js"'),'demo settings script must load');
+assert(/src="\.\/demo-settings\.js(?:\?[^\"]+)?"/.test(html),'demo settings script must load');
 assert(js.includes('demo_configuration_enabled'),'settings must be gated by a database flag');
 assert(js.includes('営業デモ限定'),'settings must clearly identify demo-only scope');
 assert(js.includes('monthly_direct'),'monthly direct goal mode must exist');
