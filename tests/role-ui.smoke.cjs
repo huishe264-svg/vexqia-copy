@@ -287,6 +287,7 @@ const path = require("node:path");
 
     appInitialized = true;
     appInitializing = false;
+    appReady = true;
     document.getElementById("appLoading").classList.add("hidden");
     document.getElementById("protectedApp").classList.remove("hidden");
     window.__authCallback("SIGNED_IN", { user: { id: "invited-user", email: "staff@example.com" } });
@@ -295,6 +296,10 @@ const path = require("node:path");
       appStaysVisible: !document.getElementById("protectedApp").classList.contains("hidden"),
       userRefreshed: currentAuthUser.email === "staff@example.com",
     };
+    showAppLoading("店舗へ接続しています...");
+    document.getElementById("protectedApp").classList.add("hidden");
+    restoreAppAfterForeground();
+    resumeAuthResult.foregroundRestoresApp = document.getElementById("appLoading").classList.contains("hidden") && !document.getElementById("protectedApp").classList.contains("hidden");
 
     return { staffResult, managerResult, ownerResult, previewResult, analyticsResult, uiThirdRoundResult, cashRegisterResult, fourthRoundResult, permissionFallbackResult, invitationResult, authFlowResult, resumeAuthResult };
   });
@@ -424,6 +429,7 @@ const path = require("node:path");
       loadingStaysHidden: true,
       appStaysVisible: true,
       userRefreshed: true,
+      foregroundRestoresApp: true,
     },
   };
 

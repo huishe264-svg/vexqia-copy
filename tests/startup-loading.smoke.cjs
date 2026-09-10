@@ -8,7 +8,10 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   assert.match(html, /id="appLoading" class="app-loading"/);
   assert.match(html, /id="authScreen" class="auth-screen hidden"/);
-  assert.match(html, /await loadAll\(\);renderPage\(currentPage\);hideAppLoading\(\);\$\("protectedApp"\)\.classList\.remove\("hidden"\)/);
+  assert.match(html, /await loadAll\(\);renderPage\(currentPage\);appReady=true/);
+  assert.match(html, /hideAppLoading\(\);\$\("protectedApp"\)\.classList\.remove\("hidden"\)/);
+  assert.match(html, /addEventListener\("visibilitychange",restoreAppAfterForeground\)/);
+  assert.match(html, /addEventListener\("pageshow",restoreAppAfterForeground\)/);
 
   const browser = await chromium.launch({ headless: true, executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe" });
   const page = await browser.newPage();
