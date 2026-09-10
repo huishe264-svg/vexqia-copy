@@ -285,7 +285,18 @@ const path = require("node:path");
     };
     init = originalInit;
 
-    return { staffResult, managerResult, ownerResult, previewResult, analyticsResult, uiThirdRoundResult, cashRegisterResult, fourthRoundResult, permissionFallbackResult, invitationResult, authFlowResult };
+    appInitialized = true;
+    appInitializing = false;
+    document.getElementById("appLoading").classList.add("hidden");
+    document.getElementById("protectedApp").classList.remove("hidden");
+    window.__authCallback("SIGNED_IN", { user: { id: "invited-user", email: "staff@example.com" } });
+    const resumeAuthResult = {
+      loadingStaysHidden: document.getElementById("appLoading").classList.contains("hidden"),
+      appStaysVisible: !document.getElementById("protectedApp").classList.contains("hidden"),
+      userRefreshed: currentAuthUser.email === "staff@example.com",
+    };
+
+    return { staffResult, managerResult, ownerResult, previewResult, analyticsResult, uiThirdRoundResult, cashRegisterResult, fourthRoundResult, permissionFallbackResult, invitationResult, authFlowResult, resumeAuthResult };
   });
 
   const expected = {
@@ -408,6 +419,11 @@ const path = require("node:path");
       initWasDeferred: true,
       initRanOnce: true,
       japaneseMembershipError: true,
+    },
+    resumeAuthResult: {
+      loadingStaysHidden: true,
+      appStaysVisible: true,
+      userRefreshed: true,
     },
   };
 

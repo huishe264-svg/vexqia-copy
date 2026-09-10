@@ -150,7 +150,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
 
 <script>
 const SUPABASE_URL="https://rtqvqohfbmycehxbqjyq.supabase.co",SUPABASE_KEY="sb_publishable_9tG7fkeuDiAanthroJX-yg_IIA_H0c5",db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let storeId=null,storeName="",businessDayCutoffHour=7,businessTimezone="Asia/Tokyo",customers=[],employees=[],bottles=[],bottleBrands=[],sales=[],saleCompanions=[],settlements=[],schedules=[],storeMembers=[],permissionMembers=[],pendingInvitations=[],cashRegister=null,cashRegisterHistory=[],monthlyGoals=[],eventGoals=[],businessDayClosures=[],currentStoreMember=null,uiPreviewRole=null,editingScheduleId=null,editingEventGoalId=null,goalSettings=null,businessOverrides=[],selectedPaymentStatus="",selectedPaymentMethod="",newBottleMode="none",existingBottleStates={},currentCalendarDate=new Date(),selectedCalendarDate=null,currentSalesDate=null,salesListMonth=dateString().slice(0,7),overrideMode=true,currentAuthUser=null,appInitialized=false,currentPage="home",charts={},invitationClaimError="";
+let storeId=null,storeName="",businessDayCutoffHour=7,businessTimezone="Asia/Tokyo",customers=[],employees=[],bottles=[],bottleBrands=[],sales=[],saleCompanions=[],settlements=[],schedules=[],storeMembers=[],permissionMembers=[],pendingInvitations=[],cashRegister=null,cashRegisterHistory=[],monthlyGoals=[],eventGoals=[],businessDayClosures=[],currentStoreMember=null,uiPreviewRole=null,editingScheduleId=null,editingEventGoalId=null,goalSettings=null,businessOverrides=[],selectedPaymentStatus="",selectedPaymentMethod="",newBottleMode="none",existingBottleStates={},currentCalendarDate=new Date(),selectedCalendarDate=null,currentSalesDate=null,salesListMonth=dateString().slice(0,7),overrideMode=true,currentAuthUser=null,appInitialized=false,appInitializing=false,currentPage="home",charts={},invitationClaimError="";
 const $=id=>document.getElementById(id),yen=v=>"¥"+Number(v||0).toLocaleString("ja-JP"),signedYen=v=>Number(v||0)<0?"-¥"+Math.abs(Number(v||0)).toLocaleString("ja-JP"):yen(v),esc=(v="")=>String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 function dateString(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}function parseDateLocal(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}function normalizeText(v=""){return String(v).normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/\s+/g,"")}function searchableCustomer(c){return normalizeText((c.name||"")+" "+(c.name_kana||""))}function activeCustomers(){return customers.filter(c=>c.is_active!==false)}function showStatus(message,type="info"){const box=$("toastContainer");if(!box)return;const toast=document.createElement("div"),kind=["success","error","warning","info"].includes(type)?type:"info";toast.className=`toast ${kind}`;toast.innerHTML=`<div>${esc(message)}</div><button class="toast-close" aria-label="通知を閉じる">×</button>`;box.appendChild(toast);const close=()=>{if(!toast.isConnected)return;toast.style.opacity="0";toast.style.transform="translateY(-10px)";setTimeout(()=>toast.remove(),180)};toast.querySelector("button").onclick=close;setTimeout(close,kind==="error"?5000:3500)}function openModal(id){$(id).classList.add("show")}function closeModal(id){$(id).classList.remove("show")}document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
 function appConfirm(message,actionLabel="削除する"){return new Promise(resolve=>{const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.45)";const box=document.createElement("div");box.style.cssText="width:min(420px,100%);padding:18px;border-radius:16px;background:#fff";box.innerHTML=`<div style="margin-bottom:16px;font-weight:700">${esc(message)}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="secondary" id="no">戻る</button><button class="secondary danger" id="yes">${esc(actionLabel)}</button></div>`;o.appendChild(box);document.body.appendChild(o);const done=v=>{o.remove();resolve(v)};box.querySelector("#no").onclick=()=>done(false);box.querySelector("#yes").onclick=()=>done(true);o.onclick=e=>{if(e.target===o)done(false)}})}
@@ -215,6 +215,7 @@ function showLoggedInApp(user){
 }
 function showAppLoading(message="店舗へ接続しています..."){$("appLoadingMessage").textContent=message;$("appLoading").classList.remove("hidden")}
 function hideAppLoading(){$("appLoading").classList.add("hidden")}
+function restoreReadyAppAfterAuth(user){currentAuthUser=user;if(!appInitialized||appInitializing||!$("connectionRecovery").classList.contains("hidden"))return;$("authScreen").classList.add("hidden");hideAppLoading();$("protectedApp").classList.remove("hidden")}
 function showLoginScreen(){
   currentAuthUser=null;
   $("protectedApp").classList.add("hidden");
@@ -234,11 +235,14 @@ async function startApp(){
     showLoginScreen();
   }
   db.auth.onAuthStateChange((event,session)=>{
-    if(event==="SIGNED_IN"&&session?.user){
-      showLoggedInApp(session.user);
+    if(["SIGNED_IN","TOKEN_REFRESHED","USER_UPDATED"].includes(event)&&session?.user){
+      currentAuthUser=session.user;
       if(!appInitialized){
+        showLoggedInApp(session.user);
         appInitialized=true;
         setTimeout(()=>{void init()},0);
+      }else{
+        restoreReadyAppAfterAuth(session.user);
       }
     }
     if(event==="SIGNED_OUT")showLoginScreen();
@@ -443,7 +447,7 @@ $("saveBtn").onclick=async()=>{if(currentStoreMember?.role==="staff"&&!currentSt
 async function claimPendingStoreInvitations(){invitationClaimError="";const{data,error}=await db.functions.invoke("manage-store-members",{body:{action:"claim"}});if(error||data?.error){invitationClaimError=await permissionErrorMessage(error,data,"招待情報を店舗へ接続できませんでした。店舗管理者に再招待を依頼してください。");console.warn("Invitation claim failed",{error,data});return 0}return Array.isArray(data?.claimed)?data.claimed.length:0}
 function showConnectionRecovery(error){hideAppLoading();$("authScreen").classList.add("hidden");$("protectedApp").classList.add("hidden");$("connectionRecovery").classList.remove("hidden");const email=currentAuthUser?.email||"";$("recoveryMessage").textContent=invitationClaimError||((error?.code==="STORE_NOT_FOUND"?error.message:"店舗データへ接続できませんでした。もう一度接続するか、別のアカウントをお試しください。")+(email?`（ログイン中: ${email}）`:""));$("recoveryNote").textContent=invitationClaimError?"招待した口座が別のアカウントへ紐付いていないか、店舗管理者に確認してください。":"招待されたメールアドレスと、現在ログイン中のメールアドレスが同じか確認してください。"}
 $("retryConnectionBtn").onclick=async()=>{const btn=$("retryConnectionBtn");btn.disabled=true;$("connectionRecovery").classList.add("hidden");showAppLoading("店舗へ再接続しています...");await init();btn.disabled=false};$("recoveryLogoutBtn").onclick=signOutApp;$("switchAccountBtn").onclick=async()=>{await db.auth.signOut();await signInWithGoogle(true)};
-async function init(){try{$("authScreen").classList.add("hidden");$("connectionRecovery").classList.add("hidden");$("protectedApp").classList.add("hidden");showAppLoading("店舗データを読み込んでいます...");selectedCalendarDate=dateString();const claimedCount=await claimPendingStoreInvitations();await loadAll();renderPage(currentPage);hideAppLoading();$("protectedApp").classList.remove("hidden");showStatus(claimedCount?"招待を確認し、店舗へ接続しました":"接続しました","success")}catch(e){console.error(e);showStatus(invitationClaimError||e.message||String(e),"error");showConnectionRecovery(e)}}
+async function init(){appInitializing=true;try{$("authScreen").classList.add("hidden");$("connectionRecovery").classList.add("hidden");$("protectedApp").classList.add("hidden");showAppLoading("店舗データを読み込んでいます...");selectedCalendarDate=dateString();const claimedCount=await claimPendingStoreInvitations();await loadAll();renderPage(currentPage);hideAppLoading();$("protectedApp").classList.remove("hidden");showStatus(claimedCount?"招待を確認し、店舗へ接続しました":"接続しました","success")}catch(e){console.error(e);showStatus(invitationClaimError||e.message||String(e),"error");showConnectionRecovery(e)}finally{appInitializing=false}}
 
 // 2026-09-02 usability and settlement rules
 function settledActualForRows(rows){return rows.filter(s=>s.is_settled&&isRecovered(s)).reduce((total,s)=>total+Number(s.total_amount||0)-Number(s.delivery_tobacco_amount||0),0)}
