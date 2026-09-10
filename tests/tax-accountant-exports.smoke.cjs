@@ -1,6 +1,6 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const root=path.resolve(__dirname,".."),js=fs.readFileSync(path.join(root,"owner-finance.js"),"utf8"),sql=fs.readFileSync(path.join(root,"supabase/migrations/20260909140000_tax_accountant_exports.sql"),"utf8"),html=fs.readFileSync(path.join(root,"index.html"),"utf8");
-assert.match(html,/owner-finance\.js\?v=20260909-2/);
+assert.match(html,/owner-finance\.js\?v=20260910-1/);
 assert.match(sql,/get_owner_sales_export_rows/);
 assert.match(sql,/get_owner_expense_export_rows/);
 assert.match(sql,/store_uses_full_expense_management\(target_store_id\)/);

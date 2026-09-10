@@ -4,7 +4,7 @@ const html=fs.readFileSync('index.html','utf8');
 const js=fs.readFileSync('reliability.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20260907100000_sales_reliability_foundation.sql','utf8');
 
-assert(html.includes('src="./reliability.js"'),'reliability layer must load for every store');
+assert(html.includes('src="./reliability.js?v=20260910-1"'),'reliability layer must load for every store');
 assert(js.includes('crypto.randomUUID()'),'every save attempt needs an idempotency key');
 assert(js.includes('create_reliable_sale'),'sale UI must use the transactional RPC');
 assert(js.includes('入力内容は画面に残しています'),'failed saves must preserve user input');
