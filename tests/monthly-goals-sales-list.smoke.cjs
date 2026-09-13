@@ -66,6 +66,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     salesListMonth = "2026-09";
     renderSalesList();
     const monthTotal = document.getElementById("salesMonthNavigator").textContent.includes("¥70,000");
+    const salesListUsesStoreSalesLabel = document.getElementById("salesMonthNavigator").textContent.includes("店舗売上") && document.getElementById("salesMonthHistory").textContent.includes("店舗売上");
     const twoDays = document.querySelectorAll("[data-sales-day]").length === 2;
     document.querySelector('[data-sales-day="2026-09-01"]').click();
     const dayDetails = document.querySelector('[data-sales-day="2026-09-01"]').nextElementSibling.querySelectorAll("[data-sale-id]").length === 2;
@@ -84,6 +85,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
 
     return {
       monthTotal,
+      salesListUsesStoreSalesLabel,
       twoDays,
       dayDetails,
       augustHistory,
@@ -100,6 +102,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
 
   assert.deepEqual(result, {
     monthTotal: true,
+    salesListUsesStoreSalesLabel: true,
     twoDays: true,
     dayDetails: true,
     augustHistory: true,
