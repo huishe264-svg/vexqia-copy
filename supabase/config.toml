@@ -1,5 +1,10 @@
 project_id = "rtqvqohfbmycehxbqjyq"
 
 [functions.manage-store-members]
-verify_jwt = true
+# New asymmetric user JWTs are verified inside the function with auth.getUser().
+# The gateway's legacy verifier is not compatible with those tokens.
+verify_jwt = false
 
+[functions.read-receipt]
+# The function validates the current Supabase user and owner/store permissions itself.
+verify_jwt = false

@@ -1,0 +1,22 @@
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const root=path.resolve(__dirname,"..");
+const js=fs.readFileSync(path.join(root,"owner-finance.js"),"utf8");
+const fn=fs.readFileSync(path.join(root,"supabase/functions/read-receipt/index.ts"),"utf8");
+const config=fs.readFileSync(path.join(root,"supabase/config.toml"),"utf8");
+
+assert.match(js,/写真から日付・支払先・金額を読み取る/);
+assert.match(js,/読み取り結果は入力候補/);
+assert.match(js,/db\.functions\.invoke\("read-receipt"/);
+assert.match(js,/\$\("finExpenseDate"\)\.value=result\.date/);
+assert.match(js,/\$\("finExpenseVendor"\)\.value=result\.vendor/);
+assert.match(js,/\$\("finExpenseAmount"\)\.value/);
+assert.match(fn,/member\?\.role !== "owner"/);
+assert.match(fn,/expense_management_mode !== "full"/);
+assert.match(fn,/Deno\.env\.get\("OPENAI_API_KEY"\)/);
+assert.match(fn,/store: false/);
+assert.match(fn,/type: "json_schema"/);
+assert.match(fn,/確認.*修正|手入力/);
+assert.match(config,/\[functions\.read-receipt\][\s\S]*verify_jwt = false/);
+console.log("Receipt reading checks passed.");
