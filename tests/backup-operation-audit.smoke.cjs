@@ -19,10 +19,13 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       renderDataSafetyCard();
       const owner = { backup: Boolean(document.getElementById("downloadStoreBackup")), history: Boolean(document.getElementById("showOperationHistory")) };
       currentStoreMember = { user_id: "manager", role: "manager" }; renderDataSafetyCard();
-      return { owner, manager: { backup: Boolean(document.getElementById("downloadStoreBackup")), history: Boolean(document.getElementById("showOperationHistory")) } };
+      const manager = { backup: Boolean(document.getElementById("downloadStoreBackup")), history: Boolean(document.getElementById("showOperationHistory")) };
+      platformAdminMode = true; currentStoreMember = { user_id: "admin", role: "admin" }; renderDataSafetyCard();
+      return { owner, manager, admin: { backup: Boolean(document.getElementById("downloadStoreBackup")), history: Boolean(document.getElementById("showOperationHistory")) } };
     });
-    assert.deepEqual(result.owner, { backup: true, history: true });
+    assert.deepEqual(result.owner, { backup: false, history: true });
     assert.deepEqual(result.manager, { backup: false, history: true });
+    assert.deepEqual(result.admin, { backup: true, history: true });
     console.log("Backup and operation audit test passed.");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

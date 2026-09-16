@@ -66,7 +66,7 @@ const auditedEntityLabels={customers:"顧客",employees:"口座",bottles:"ボト
 const auditedActionLabels={created:"登録",updated:"変更",deleted:"削除"};
 async function pagedStoreBackupRows(table){let rows=[];for(let from=0;;from+=1000){const result=await db.from(table).select("*").eq("store_id",storeId).range(from,from+999);if(result.error)throw result.error;rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)break}return rows}
 async function downloadStoreBackup(){
-  if(!isOwner())return showStatus("店舗データのバックアップはオーナーのみ利用できます。","error");
+  if(!platformAdminMode)return showStatus("店舗データのバックアップはVEXQIA管理者のみ利用できます。","error");
   const button=$("downloadStoreBackup");button.disabled=true;button.textContent="バックアップ作成中…";
   try{
     const tables=["customers","employees","bottles","bottle_brands","sales","sale_companions","daily_settlements","schedules","expenses","cash_registers","cash_register_history","monthly_sales_goals","event_sales_goals","business_day_overrides","business_day_closures","sales_goal_settings"];
@@ -84,7 +84,7 @@ async function loadOperationHistory(){
 }
 function renderDataSafetyCard(){
   let card=$("dataSafetyCard");if(!isOwnerOrManager()){card?.remove();return}if(!card){card=document.createElement("div");card.id="dataSafetyCard";card.className="card";$("page-settings").appendChild(card)}
-  card.innerHTML=`<div class="section-title">バックアップと操作履歴</div><div class="permission-note">顧客・口座・ボトル・予定・経費・日別精算の変更者と日時を記録します。</div><div class="data-safety-actions">${isOwner()?'<button type="button" class="secondary" id="downloadStoreBackup">店舗データをバックアップ</button>':""}<button type="button" class="secondary" id="showOperationHistory">最近の操作を見る</button></div><div class="backup-note">バックアップは復旧用JSONです。端末外の安全な場所にも保管してください。領収書画像本体は別管理です。</div><div id="operationHistory"></div>`;
+  card.innerHTML=`<div class="section-title">${platformAdminMode?"バックアップと操作履歴":"操作履歴"}</div><div class="permission-note">顧客・口座・ボトル・予定・経費・日別精算の変更者と日時を記録します。</div><div class="data-safety-actions">${platformAdminMode?'<button type="button" class="secondary" id="downloadStoreBackup">店舗データをバックアップ</button>':""}<button type="button" class="secondary" id="showOperationHistory">最近の操作を見る</button></div>${platformAdminMode?'<div class="backup-note">バックアップは管理者用の復旧データです。領収書画像本体は別管理です。</div>':""}<div id="operationHistory"></div>`;
   if($("downloadStoreBackup"))$("downloadStoreBackup").onclick=downloadStoreBackup;$("showOperationHistory").onclick=loadOperationHistory
 }
 const renderSettingsBeforeDataSafety=renderSettings;
