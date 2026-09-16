@@ -25,6 +25,7 @@ function customerNameMatch(customer, query) {
  return null;
 }
 function customerNameMatches(customer,query){return Boolean(customerNameMatch(customer,query))}
+function customerNameOrder(a,b,query){const q=normalizeText(query),am=customerNameMatch(a,q),bm=customerNameMatch(b,q);if(!q)return 0;if(!am)return 1;if(!bm)return-1;return am.index-bm.index||Number(bm.direct)-Number(am.direct)||directVisitCount(b.id)-directVisitCount(a.id)||String(a.name||'').localeCompare(String(b.name||''),'ja')}
 
 // Keep all existing customer-search consumers on the same matching rules.
 searchableCustomer=function(customer){return {includes:q=>customerNameMatches(customer,q)}};
@@ -49,7 +50,7 @@ function openCustomerPreview(id,origin){
 renderCustomerSuggestions=function(query){
  const box=$('customerSuggestions'),q=normalizeText(query);
  if(!q){box.classList.remove('show');return;}
- const rows=activeCustomers().map(customer=>({customer,match:customerNameMatch(customer,q)})).filter(row=>row.match).sort((a,b)=>a.match.index-b.match.index||Number(b.match.direct)-Number(a.match.direct)||directVisitCount(b.customer.id)-directVisitCount(a.customer.id)).slice(0,15).map(row=>row.customer);
+ const rows=activeCustomers().filter(customer=>customerNameMatches(customer,q)).sort((a,b)=>customerNameOrder(a,b,q)).slice(0,15);
  box.innerHTML=rows.length?rows.map(c=>`<div class="customer-suggestion-row"><button type="button" class="suggestion customer-pick" data-pick="${esc(c.id)}"><b>${esc(c.name)}</b><small>本人来店 ${directVisitCount(c.id)}回 ・ 同伴 ${companionVisitCount(c.id)}回</small></button><button type="button" class="customer-preview-button" data-preview="${esc(c.id)}" aria-label="${esc(c.name)}の備考・詳細">詳細</button></div>`).join(''):'<button type="button" class="suggestion customer-pick" id="noCustomer"><b>該当なし</b><small>新規顧客として登録</small></button>';
  box.classList.add('show');
  box.querySelectorAll('[data-pick]').forEach(button=>button.onclick=()=>selectMainCustomer(button.dataset.pick));

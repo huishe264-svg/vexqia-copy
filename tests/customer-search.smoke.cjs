@@ -16,6 +16,7 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
  const ignored=!customerNameMatches(customers[0],'ぜったい');
  renderCustomerSuggestions('なが');
  const ranked=[...$('customerSuggestions').querySelectorAll('[data-pick]')].map(button=>button.dataset.pick);
+ $('customerListSearch').value='なが';renderCustomerList();const listRanked=[...$('customerList').querySelectorAll('[data-customer-detail]')].map(card=>card.dataset.customerDetail);
  renderCustomerSuggestions('やま');
  const count=$('customerSuggestions').querySelectorAll('[data-pick]').length;
  $('customerSuggestions').querySelector('[data-preview]').click();
@@ -23,9 +24,9 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
  closeCustomerPreview();
  $('customerSuggestions').querySelector('[data-pick]').click();
  openNewCustomerModal();openCustomerEditor('c1');
- return {matched,ignored,count,ranked,preview,selected:$('customerId').value,readingFields:!!($('newCustomerKana')||$('editCustomerKana')),width:document.documentElement.scrollWidth};
+ return {matched,ignored,count,ranked,listRanked,placeholder:$('customerListSearch').placeholder,preview,selected:$('customerId').value,readingFields:!!($('newCustomerKana')||$('editCustomerKana')),width:document.documentElement.scrollWidth};
  });
- assert.ok(result.matched.every(Boolean));assert.ok(result.ignored);assert.equal(result.count,1);assert.deepEqual(result.ranked.slice(0,2),['c4','c5']);
+ assert.ok(result.matched.every(Boolean));assert.ok(result.ignored);assert.equal(result.count,1);assert.deepEqual(result.ranked.slice(0,2),['c4','c5']);assert.deepEqual(result.listRanked.slice(0,2),['c4','c5']);assert.match(result.placeholder,/ひらがな対応/);
  assert.ok(result.preview.open);assert.match(result.preview.notes,/甘いお酒/);assert.equal(result.preview.editable,0);assert.equal(result.preview.injected,0);assert.equal(result.preview.selected,'');assert.equal(result.selected,'c1');assert.equal(result.readingFields,false);assert.ok(result.width<=390);
  console.log('PASS: kun/on kana, compound names, ignored legacy readings, read-only escaped preview, selection and mobile width.');
  }finally{await browser.close()}
