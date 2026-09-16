@@ -50,7 +50,6 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     appConfirm = async () => false;
     db.from = () => ({ insert: () => { insertCalls += 1; return { select: () => ({ single: async () => ({ data: null, error: null }) }) }; } });
     document.getElementById("newCustomerName").value = "田中";
-    document.getElementById("newCustomerKana").value = "たなか";
     document.getElementById("newCustomerEmployee").innerHTML = '<option value="employee-1">口座A</option>';
     document.getElementById("newCustomerEmployee").value = "employee-1";
     document.getElementById("newCustomerNotes").value = "VIP";
