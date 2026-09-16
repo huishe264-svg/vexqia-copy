@@ -60,6 +60,3 @@ renderCustomerSuggestions=function(query){
 const customerSearchStyle=document.createElement('style');
 customerSearchStyle.textContent='.customer-suggestion-row{display:flex;align-items:stretch;border-bottom:1px solid #e2e6eb}.customer-pick{flex:1;min-width:0;width:100%;text-align:left;background:white;color:#132238;border:0;min-height:48px;font:inherit}.customer-pick b,.customer-pick small{display:block}.customer-preview-button{flex:0 0 60px;min-height:48px;background:#f3f5f7;color:#132238;border:0;border-left:1px solid #e2e6eb;font:inherit}.customer-preview-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:16px}#customerQuickPreview{z-index:10050}';
 document.head.appendChild(customerSearchStyle);
-const readingNotice=document.createElement('div');readingNotice.className='hint';
-readingNotice.innerHTML='<a href="./KANJI-DATA-NOTICE.md" target="_blank" rel="noopener">読み検索の辞書・ライセンス</a>';
-$('customerList')?.parentElement?.appendChild(readingNotice);
