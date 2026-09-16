@@ -33,8 +33,12 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       { id: "active-1", name: "現役口座", is_active: true, color: "#4D6B5A" },
       { id: "archived-1", name: "削除済み口座", is_active: false, color: "#65758B" },
     ];
-    customers = [{ id: "main-1", name: "主顧客", is_active: true, employee_id: "active-1" }];
+    customers = [
+      { id: "main-1", name: "主顧客", is_active: true, employee_id: "active-1" },
+      { id: "guest-1", name: "同伴顧客", is_active: true, employee_id: "active-1" },
+    ];
     sales = [{ id: "old-sale", business_date: "2026-08-31", customer_id: "main-1", employee_id: "archived-1", payment_status: "回収済み", payment_method: "現金", party_size: 1, total_amount: 10000, is_settled: true }];
+    saleCompanions = [{ id: "companion-link", sale_id: "old-sale", customer_id: "guest-1" }];
     schedules = [];
     monthlyGoals = [{ goal_month: "2026-09-01", weekday_goal: 23000, weekend_goal: 29000, target_amount: 116000, open_weekdays: [5] }];
     businessOverrides = [];
@@ -43,6 +47,8 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     renderEmployees();
     renderEmployeeList();
     renderHome();
+    renderCustomerDetail("guest-1");
+    const companionHistoryText = document.getElementById("customerDetail").textContent;
 
     const mondayTarget = configuredDailyTarget("2026-09-07");
     const fridayTarget = configuredDailyTarget("2026-09-11");
@@ -86,6 +92,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       homeSimplified: !document.getElementById("homeAttention") && !document.getElementById("homeSalesChart") && !document.querySelector('[data-go-page="sales-list"]'),
       companionCreatedOnce: customerInsertCount === 1 && createdIds[0] === "companion-new" && reusedIds[0] === "companion-new",
       companionDetailsSaved: insertedCustomer?.employee_id === "active-1" && insertedCustomer?.notes === "ウイスキーが好き",
+      companionHistoryVisible: companionHistoryText.includes("主顧客様の会計に同伴") && companionHistoryText.includes("¥10,000"),
     };
   });
 
@@ -100,6 +107,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     homeSimplified: true,
     companionCreatedOnce: true,
     companionDetailsSaved: true,
+    companionHistoryVisible: true,
   });
 
   await browser.close();
