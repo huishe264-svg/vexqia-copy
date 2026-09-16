@@ -57,3 +57,35 @@ function renderIntegrityCard(){
 }
 const renderSettingsBeforeReliability=renderSettings;
 renderSettings=function(){renderSettingsBeforeReliability();renderIntegrityCard()};
+
+document.head.insertAdjacentHTML("beforeend",`<style>
+.data-safety-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.operation-log{display:grid;gap:7px;margin-top:11px}.operation-row{padding:10px 11px;border:1px solid #e4e8ed;border-radius:10px;background:#fafbfc}.operation-row-head{display:flex;justify-content:space-between;gap:8px}.operation-row strong{font-size:12px}.operation-row small{display:block;margin-top:3px;color:#667085;font-size:10px}.backup-note{margin-top:8px;color:#667085;font-size:11px;line-height:1.55}@media(max-width:430px){.data-safety-actions{grid-template-columns:1fr}}
+</style>`);
+
+const auditedEntityLabels={customers:"顧客",employees:"口座",bottles:"ボトル",schedules:"予定",expenses:"経費",daily_settlements:"日別精算"};
+const auditedActionLabels={created:"登録",updated:"変更",deleted:"削除"};
+async function pagedStoreBackupRows(table){let rows=[];for(let from=0;;from+=1000){const result=await db.from(table).select("*").eq("store_id",storeId).range(from,from+999);if(result.error)throw result.error;rows.push(...(result.data||[]));if(!result.data||result.data.length<1000)break}return rows}
+async function downloadStoreBackup(){
+  if(!isOwner())return showStatus("店舗データのバックアップはオーナーのみ利用できます。","error");
+  const button=$("downloadStoreBackup");button.disabled=true;button.textContent="バックアップ作成中…";
+  try{
+    const tables=["customers","employees","bottles","bottle_brands","sales","sale_companions","daily_settlements","schedules","expenses","cash_registers","cash_register_history","monthly_sales_goals","event_sales_goals","business_day_overrides","business_day_closures","sales_goal_settings"];
+    const entries=await Promise.all(tables.map(async table=>[table,await pagedStoreBackupRows(table)]));
+    const payload={format:"vexqia-store-backup",version:1,store:{id:storeId,name:storeName},exported_at:new Date().toISOString(),exported_by:currentAuthUser?.id||null,data:Object.fromEntries(entries),note:"領収書画像本体は含まず、画像への参照情報を保存しています。"};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a"),stamp=dateString();link.href=url;link.download=`VEXQIA_${String(storeName||"store").replace(/[\\/:*?\"<>|]/g,"_")}_${stamp}.json`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showStatus("店舗データのバックアップを保存しました。","success")
+  }catch(error){showStatus(friendlyErrorMessage(error,"バックアップを作成できませんでした。"),"error")}
+  finally{button.disabled=false;button.textContent="店舗データをバックアップ"}
+}
+async function loadOperationHistory(){
+  const box=$("operationHistory");if(!box)return;box.innerHTML='<div class="empty">読み込み中...</div>';
+  const result=await db.from("operation_audit_log").select("id,entity_type,entity_id,action,changed_by,changed_at").eq("store_id",storeId).order("changed_at",{ascending:false}).limit(50);
+  if(result.error){box.innerHTML=`<div class="empty">${esc(friendlyErrorMessage(result.error,"操作履歴を読み込めませんでした。"))}</div>`;return}
+  const rows=result.data||[];box.innerHTML=rows.length?`<div class="operation-log">${rows.map(row=>{const when=new Date(row.changed_at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});return`<div class="operation-row"><div class="operation-row-head"><strong>${esc(auditedEntityLabels[row.entity_type]||row.entity_type)}を${esc(auditedActionLabels[row.action]||row.action)}</strong><span class="badge">${esc(memberLabel(row.changed_by))}</span></div><small>${esc(when)}</small></div>`}).join("")}</div>`:'<div class="empty">記録開始後の操作はまだありません</div>'
+}
+function renderDataSafetyCard(){
+  let card=$("dataSafetyCard");if(!isOwnerOrManager()){card?.remove();return}if(!card){card=document.createElement("div");card.id="dataSafetyCard";card.className="card";$("page-settings").appendChild(card)}
+  card.innerHTML=`<div class="section-title">バックアップと操作履歴</div><div class="permission-note">顧客・口座・ボトル・予定・経費・日別精算の変更者と日時を記録します。</div><div class="data-safety-actions">${isOwner()?'<button type="button" class="secondary" id="downloadStoreBackup">店舗データをバックアップ</button>':""}<button type="button" class="secondary" id="showOperationHistory">最近の操作を見る</button></div><div class="backup-note">バックアップは復旧用JSONです。端末外の安全な場所にも保管してください。領収書画像本体は別管理です。</div><div id="operationHistory"></div>`;
+  if($("downloadStoreBackup"))$("downloadStoreBackup").onclick=downloadStoreBackup;$("showOperationHistory").onclick=loadOperationHistory
+}
+const renderSettingsBeforeDataSafety=renderSettings;
+renderSettings=function(){renderSettingsBeforeDataSafety();renderDataSafetyCard()};
