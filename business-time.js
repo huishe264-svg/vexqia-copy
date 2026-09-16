@@ -50,7 +50,7 @@ function latestCompletedBusinessDate(now=new Date()){let key=shiftDateKey(calend
   const renderCalendarBeforeBusinessClock=renderCalendar;
   renderCalendar=function(){renderCalendarBeforeBusinessClock();const today=businessDateString();$("calendarGrid")?.querySelectorAll("[data-calendar-date]").forEach(day=>day.classList.toggle("today",day.dataset.calendarDate===today))};
   renderTodayReservations=function(){const today=businessDateString(),rows=schedules.filter(s=>s.schedule_date===today&&s.schedule_type==="予約"&&s.status!=="キャンセル");$("todayReservations").innerHTML=rows.length?rows.map(s=>`<div class="today-reservation"><span class="badge reservation">予約</span> ${s.schedule_time?s.schedule_time.slice(0,5):""}<br><strong>${esc(s.title)}</strong><div class="item-sub">担当: ${esc(scheduleEmployeeLabel(s.employee_id))}${s.party_size?` ・ ${Number(s.party_size)}名`:""}</div></div>`).join(""):'<div class="empty">本日の予約はありません</div>'};
-  $("newScheduleBtn").onclick=()=>openScheduleModal(businessDateString());
+  $("newScheduleBtn").onclick=()=>openScheduleModal(selectedCalendarDate||businessDateString());
   $("addSelectedDateScheduleBtn").onclick=()=>openScheduleModal(selectedCalendarDate||businessDateString());
 
   const openGoalModalBeforeBusinessClock=openGoalModal;
