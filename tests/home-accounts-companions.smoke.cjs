@@ -56,12 +56,15 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     document.getElementById("employeeSelect").value = "active-1";
     addCompanionRow();
     document.querySelector(".companion-search").value = "新しい同伴者";
+    document.querySelector(".companion-employee").value = "active-1";
+    document.querySelector(".companion-notes").value = "ウイスキーが好き";
     let customerInsertCount = 0;
+    let insertedCustomer = null;
     db.from = table => ({
       insert: values => ({
         select: () => ({
           single: async () => {
-            if (table === "customers") customerInsertCount += 1;
+            if (table === "customers") { customerInsertCount += 1; insertedCustomer = values; }
             return { data: { id: "companion-new", ...values }, error: null };
           },
         }),
@@ -82,6 +85,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       archivedHistoryPreserved: saleCard(sales[0]).includes("削除済み口座"),
       homeSimplified: !document.getElementById("homeAttention") && !document.getElementById("homeSalesChart") && !document.querySelector('[data-go-page="sales-list"]'),
       companionCreatedOnce: customerInsertCount === 1 && createdIds[0] === "companion-new" && reusedIds[0] === "companion-new",
+      companionDetailsSaved: insertedCustomer?.employee_id === "active-1" && insertedCustomer?.notes === "ウイスキーが好き",
     };
   });
 
@@ -95,6 +99,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     archivedHistoryPreserved: true,
     homeSimplified: true,
     companionCreatedOnce: true,
+    companionDetailsSaved: true,
   });
 
   await browser.close();
