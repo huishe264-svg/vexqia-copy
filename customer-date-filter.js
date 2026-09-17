@@ -1,5 +1,6 @@
 (function setupCustomerVisitDatePicker(){
  const input=$('customerVisitDate'),clearButton=$('clearCustomerVisitDate');if(!input)return;
+ $('customerVisitDateSummary')?.remove();
  input.classList.add('hidden');input.onchange=null;
  const openButton=document.createElement('button');openButton.type='button';openButton.id='openCustomerVisitDate';openButton.className='customer-date-button';
  input.insertAdjacentElement('beforebegin',openButton);
@@ -8,7 +9,7 @@
  document.body.appendChild(modal);
  let draftDate='',shownMonth='';
  const today=()=>dateString(new Date());
- function buttonLabel(){openButton.innerHTML=input.value?`<span>📅 来店日</span><strong>${input.value.replaceAll('-','/')}</strong>`:'<span>📅 来店日を選ぶ</span><strong>日付から顧客を検索</strong>';clearButton.classList.toggle('hidden',!input.value)}
+ function buttonLabel(){openButton.textContent=input.value?input.value.replaceAll('-','/'):'日付を選択';clearButton.classList.toggle('hidden',!input.value)}
  function monthLabel(month){const[y,m]=month.split('-');return`${y}年${Number(m)}月`}
  function shiftMonth(offset){const[y,m]=shownMonth.split('-').map(Number),next=new Date(y,m-1+offset,1);shownMonth=dateString(next).slice(0,7);renderCalendar()}
  function renderCalendar(){
