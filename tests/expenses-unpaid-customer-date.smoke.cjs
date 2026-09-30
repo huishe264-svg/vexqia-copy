@@ -66,7 +66,6 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     simpleInputs[1].dispatchEvent(new Event("input", { bubbles: true }));
 
     document.getElementById("newCustomerName").value = "前の顧客";
-    document.getElementById("newCustomerKana").value = "まえ";
     document.getElementById("newCustomerNotes").value = "前回の備考";
     closeModal("newCustomerModal");
 
@@ -80,7 +79,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       expenseHistoryLabel: expenseUi.includes("経費"),
       simpleExpenseHasNoCategory: !document.getElementById("expenseCategory") && !document.getElementById("expenseDescription"),
       simpleExpenseMultipleAmounts: simpleInputs.length === 2 && document.getElementById("simpleExpenseTotal").textContent === "¥3,580",
-      customerFormReset: !document.getElementById("newCustomerName").value && !document.getElementById("newCustomerKana").value && !document.getElementById("newCustomerNotes").value,
+      customerFormReset: !document.getElementById("newCustomerName").value && !document.getElementById("newCustomerKana") && !document.getElementById("newCustomerNotes").value,
     };
   });
 
@@ -102,3 +101,4 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   console.error(error);
   process.exit(1);
 });
+
