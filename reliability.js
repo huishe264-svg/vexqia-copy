@@ -16,6 +16,8 @@ $("saveBtn").onclick=async function(){
   if(!validateSaleWithBrands())return showStatus("入力内容を確認してください","error");
   const receivableIds=[...selectedReceivableIds];if(receivableIds.length&&(selectedPaymentStatus!=="回収済み"||!selectedPaymentMethod))return showStatus("未収を含める場合は、回収済みと支払方法を選択してください。","error");
   const customerId=$("customerId").value,customer=customers.find(item=>item.id===customerId),amount=Number($("totalAmount").value),method=selectedPaymentMethod,status=selectedPaymentStatus,brandValue=$("newBottleBrandSelect").value,emptiedBottleIds=Object.entries(existingBottleStates).filter(([,state])=>state==="空いた").map(([id])=>id),button=$("saveBtn");
+  const allocations=selectedReceivableAllocations();
+  if(allocations.some(row=>!Number.isSafeInteger(row.amount)||row.amount<=0||row.amount>Number(sales.find(s=>s.id===row.sale_id)?.total_amount||0))||allocations.reduce((sum,row)=>sum+row.amount,0)>amount)return showStatus('今回の返済額を未収残額以内で入力し、返済合計が会計金額を超えないようにしてください。','error');
   let pendingBottle=null;
   if(brandValue==="__custom__")pendingBottle={brand_id:null,name:$("directBottleName").value.trim(),bottle_number:$("directBottleNumber").value.trim()||null};
   else if(brandValue){const brand=bottleBrands.find(item=>item.id===brandValue);if(!brand)return showStatus("選択した銘柄が見つかりません","error");pendingBottle={brand_id:brand.id,name:brand.name,bottle_number:$("masterBottleNumber").value.trim()||null}}
@@ -23,12 +25,12 @@ $("saveBtn").onclick=async function(){
   try{
     if(pendingBottle&&!pendingBottle.brand_id){const brand=await ensureBottleBrand(pendingBottle.name);pendingBottle.brand_id=brand.id;pendingBottle.name=brand.name}
     const companionIds=await resolveCompanionIds(),requestId=reliabilityRequestId();
-    const result=await db.rpc("create_reliable_sale",{
+    const result=await db.rpc(allocations.length?"create_reliable_sale_with_allocations":"create_reliable_sale",{
       target_store_id:storeId,target_request_id:requestId,target_business_date:$("businessDate").value,target_customer_id:customerId,target_employee_id:$("employeeSelect").value,
       target_payment_status:status,target_payment_method:method,target_party_size:Number($("partySize").value),target_total_amount:amount,target_extras_amount:Number($("extraAmount").value||0),
       target_bottle_id:pendingBottle?null:($("bottleSelect").value||null),target_notes:$("notes").value.trim()||null,target_companion_ids:companionIds,
       target_new_bottle_brand_id:pendingBottle?.brand_id||null,target_new_bottle_name:pendingBottle?.name||null,target_new_bottle_number:pendingBottle?.bottle_number||null,
-      target_emptied_bottle_ids:emptiedBottleIds,target_receivable_sale_ids:receivableIds
+      target_emptied_bottle_ids:emptiedBottleIds,target_receivable_sale_ids:receivableIds,...(allocations.length?{target_receivable_allocations:allocations}:{})
     });
     if(result.error)throw result.error;const duplicate=Boolean(result.data?.duplicate),count=receivableIds.length;pendingSaleRequestId=null;resetInputImproved();await loadAll();showSaleSuccess(customer,amount,method,brandValue==="__custom__");showStatus(duplicate?"同じ売上は既に保存済みです。二重登録はしていません。":count?`売上と未収${count}件を安全に一括保存しました。`:"売上を安全に保存しました。","success")
   }catch(error){showStatus(`${reliabilityErrorMessage(error)} 入力内容は画面に残しています。`,"error")}
@@ -89,3 +91,4 @@ function renderDataSafetyCard(){
 }
 const renderSettingsBeforeDataSafety=renderSettings;
 renderSettings=function(){renderSettingsBeforeDataSafety();renderDataSafetyCard()};
+
