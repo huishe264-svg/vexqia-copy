@@ -10,13 +10,15 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
  await page.goto('file:///'+path.resolve(__dirname,'../index.html').replaceAll('\\','/'));
  const result=await page.evaluate(()=>{
  currentAuthUser={id:'owner'};currentStoreMember={user_id:'owner',role:'owner'};storeId='test';
- customers=[{id:'c1',name:'山田太郎',name_kana:'ぜったいつかわない',notes:'甘いお酒が好き\n<img src=x onerror=alert(1)>',employee_id:'e1'},{id:'c2',name:'角田',notes:null},{id:'c3',name:'山田',is_active:false},{id:'c4',name:'永井',notes:'先頭一致'},{id:'c5',name:'なんたら社長',notes:'後方一致'}];
+ customers=[{id:'c1',name:'山田太郎',name_kana:'ぜったいつかわない',notes:'甘いお酒が好き\n<img src=x onerror=alert(1)>',employee_id:'e1'},{id:'c2',name:'角田',notes:null},{id:'c3',name:'山田',is_active:false},{id:'c4',name:'永井',notes:'先頭一致'},{id:'c5',name:'なんたら社長',notes:'後方一致'},{id:'c6',name:'依子さん',notes:'訓読み活用'}];
  employees=[{id:'e1',name:'葵'}];sales=[];
  const matched=['やま','さん','やまだ','ヤマダ','たろう'].map(q=>customerNameMatches(customers[0],q));
+ const kunNameMatched=customerNameMatches(customers[5],'よりこ');
  const ignored=!customerNameMatches(customers[0],'ぜったい');
  renderCustomerSuggestions('なが');
  const ranked=[...$('customerSuggestions').querySelectorAll('[data-pick]')].map(button=>button.dataset.pick);
  $('customerListSearch').value='なが';renderCustomerList();const listRanked=[...$('customerList').querySelectorAll('[data-customer-detail]')].map(card=>card.dataset.customerDetail);
+ $('customerListSearch').value='よりこ';renderCustomerList();const kunNameList=[...$('customerList').querySelectorAll('[data-customer-detail]')].map(card=>card.dataset.customerDetail);
  renderCustomerSuggestions('やま');
  const count=$('customerSuggestions').querySelectorAll('[data-pick]').length;
  $('customerSuggestions').querySelector('[data-preview]').click();
@@ -24,10 +26,11 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
  closeCustomerPreview();
  $('customerSuggestions').querySelector('[data-pick]').click();
  openNewCustomerModal();openCustomerEditor('c1');
- return {matched,ignored,count,ranked,listRanked,placeholder:$('customerListSearch').placeholder,preview,selected:$('customerId').value,readingFields:!!($('newCustomerKana')||$('editCustomerKana')),width:document.documentElement.scrollWidth};
+ return {matched,kunNameMatched,kunNameList,ignored,count,ranked,listRanked,placeholder:$('customerListSearch').placeholder,preview,selected:$('customerId').value,readingFields:!!($('newCustomerKana')||$('editCustomerKana')),width:document.documentElement.scrollWidth};
  });
- assert.ok(result.matched.every(Boolean));assert.ok(result.ignored);assert.equal(result.count,1);assert.deepEqual(result.ranked.slice(0,2),['c4','c5']);assert.deepEqual(result.listRanked.slice(0,2),['c4','c5']);assert.match(result.placeholder,/ひらがな対応/);
+ assert.ok(result.matched.every(Boolean));assert.ok(result.kunNameMatched);assert.deepEqual(result.kunNameList,['c6']);assert.ok(result.ignored);assert.equal(result.count,1);assert.deepEqual(result.ranked.slice(0,2),['c4','c5']);assert.deepEqual(result.listRanked.slice(0,2),['c4','c5']);assert.match(result.placeholder,/ひらがな対応/);
  assert.ok(result.preview.open);assert.match(result.preview.notes,/甘いお酒/);assert.equal(result.preview.editable,0);assert.equal(result.preview.injected,0);assert.equal(result.preview.selected,'');assert.equal(result.selected,'c1');assert.equal(result.readingFields,false);assert.ok(result.width<=390);
  console.log('PASS: kun/on kana, compound names, ignored legacy readings, read-only escaped preview, selection and mobile width.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
+
