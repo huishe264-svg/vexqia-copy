@@ -6,8 +6,11 @@ function customerNameMatch(customer, query) {
  if(directIndex>=0)return {index:directIndex,direct:true};
  const chars=Array.from(name), dictionary=window.VEXQIA_KANJI_READINGS||{};
  const voiced={'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ'};
+ const continuative={'う':'い','く':'き','ぐ':'ぎ','す':'し','つ':'ち','ぬ':'に','ぶ':'び','む':'み','る':'り'};
  const options=chars.map((ch,i)=>{
   const readings=[ch,...(dictionary[ch]||[]).map(normalizeText)];
+  // Names often use the continuative form of a kun reading (依: よる -> より).
+  for(const r of [...readings])if(r.length>1&&continuative[r.at(-1)])readings.push(r.slice(0,-1)+continuative[r.at(-1)]);
   if(i>0)for(const r of [...readings])if(voiced[r[0]])readings.push(voiced[r[0]]+r.slice(1));
   return [...new Set(readings)];
  });
@@ -60,3 +63,4 @@ renderCustomerSuggestions=function(query){
 const customerSearchStyle=document.createElement('style');
 customerSearchStyle.textContent='.customer-suggestion-row{display:flex;align-items:stretch;border-bottom:1px solid #e2e6eb}.customer-pick{flex:1;min-width:0;width:100%;text-align:left;background:white;color:#132238;border:0;min-height:48px;font:inherit}.customer-pick b,.customer-pick small{display:block}.customer-preview-button{flex:0 0 60px;min-height:48px;background:#f3f5f7;color:#132238;border:0;border-left:1px solid #e2e6eb;font:inherit}.customer-preview-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:16px}#customerQuickPreview{z-index:10050}';
 document.head.appendChild(customerSearchStyle);
+
