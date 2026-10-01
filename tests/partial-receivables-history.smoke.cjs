@@ -15,6 +15,9 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
    db.from=table=>{let from=0,to=49;const q={select(){return q},eq(){return q},in(){return q},is(){return q},order(){return q},limit(){return q},range(a,b){from=a;to=b;return q},then(resolve){resolve({data:table==='sale_audit_log'?[]:Array.from({length:Math.max(0,Math.min(to+1,123)-from)},(_,i)=>({id:String(from+i),created_at:'2026-09-29T10:00:00Z',created_by:'owner',action:'settlement',amount_delta:1000,balance_after:30000,expense_date:'2026-09-29',amount:1000})),error:null})}};return q};
    $('appLoading').classList.add('hidden');$('authScreen').classList.add('hidden');$('protectedApp').classList.remove('hidden');goToPage('sales');
   });
+  assert.equal(await page.locator('.cash-register-card > .cash-expense-entry').count(),1);
+  assert.equal(await page.locator('#cashRegisterSection > .expense-entry-card').count(),0);
+  assert.match(await page.locator('#toggleSimpleExpenseEntry').textContent(),/その他経費を登録/);
   assert.equal(await page.locator('#simpleExpenseEntryFields').isVisible(),false);
   await page.locator('#toggleSimpleExpenseEntry').click();await page.locator('.simple-expense-amount').fill('1200');
   await page.locator('#toggleSimpleExpenseEntry').click();await page.locator('#toggleSimpleExpenseEntry').click();assert.equal(await page.locator('.simple-expense-amount').inputValue(),'1200');await page.locator('#toggleSimpleExpenseEntry').click();
