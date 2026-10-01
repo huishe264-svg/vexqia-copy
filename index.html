@@ -55,6 +55,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
 .customer-date-filter{margin-bottom:11px;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:#fff}.customer-date-filter label{margin-bottom:6px}.expense-entry-card{margin-top:11px}.expense-amount-row{display:grid;grid-template-columns:1fr 46px;gap:7px;margin-bottom:8px}.expense-amount-row input{margin:0}.expense-amount-remove{min-height:48px;border:1px solid #efd2cf;border-radius:11px;background:#fff7f6;color:var(--red);font-size:20px}.expense-entry-total{display:flex;justify-content:space-between;gap:10px;margin:12px 0;padding:12px;border-radius:11px;background:#f2f4f7;font-size:13px;font-weight:850}.expense-entry-total strong{font-size:18px}.expense-history{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}.expense-history-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eceef1}.expense-history-row:last-child{border-bottom:0}.expense-history-actions{display:flex;align-items:center;gap:6px}.expense-history-actions button{min-height:38px;padding:0 9px}.expense-history-edit{grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto;gap:6px}.expense-history-edit input{height:42px}.expense-history-edit button{min-height:42px;padding:0 10px}.schedule-colors{display:grid;grid-template-columns:repeat(5,44px);gap:10px}.schedule-color{position:relative;width:44px;height:44px;min-height:44px;border:2px solid transparent;border-radius:50%;background:var(--schedule-color);box-shadow:inset 0 0 0 1px rgba(19,34,56,.08)}.schedule-color.active{border-color:#fff;outline:3px solid var(--navy)}.schedule-color.active:after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:18px;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.35)}.schedule-color[data-color="gold"].active:after{color:#263143;text-shadow:none}.schedule-item{border-left:5px solid var(--schedule-color,#65758b)}@media(max-width:430px){.expense-history-edit{grid-template-columns:1fr auto}.expense-history-edit .cancel-simple-expense{grid-column:1/-1}}
 /* Collapsible operational histories */
 .history-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:46px;margin-top:12px;padding:0 2px;border:0;background:transparent;color:var(--navy);font-size:13px;font-weight:850;text-align:left}.history-toggle:after{content:"＋";font-size:18px}.history-toggle[aria-expanded="true"]:after{content:"−"}
+.cash-expense-entry{margin-top:12px;padding-top:12px;border-top:1px solid #eceef1}.cash-expense-entry>.section-title{margin-bottom:8px}.cash-expense-entry>#toggleSimpleExpenseEntry{margin-bottom:0}.cash-expense-entry>#simpleExpenseEntryFields{padding-top:10px}
 </style>
 </head>
 <body>
@@ -667,7 +668,7 @@ renderCashRegister=function(){renderCashRegisterWithCollapsedExpensesBase();cons
 <script src="./customer-date-filter.js?v=20260917-2"></script>
 <script src="./sale-extras.js?v=20260916-1"></script>
 <script src="./settlement-corrections.js?v=20260917-2"></script>
-<script src="./settlement-history.js?v=20260929-1"></script>
+<script src="./settlement-history.js?v=20261001-1"></script>
 <script>startApp();</script>
 </body>
 </html>
