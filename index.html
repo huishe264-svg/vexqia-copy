@@ -658,7 +658,7 @@ const renderCashRegisterWithCollapsedExpensesBase=renderCashRegister;
 renderCashRegister=function(){renderCashRegisterWithCollapsedExpensesBase();const card=$("cashRegisterSection")?.querySelector(".expense-entry-card"),history=card?.querySelector(".expense-history");if(!card||!history)return;history.classList.toggle("hidden",!simpleExpenseHistoryExpanded);const toggle=document.createElement("button");toggle.type="button";toggle.id="toggleSimpleExpenseHistory";toggle.className="history-toggle";toggle.setAttribute("aria-expanded",String(simpleExpenseHistoryExpanded));toggle.textContent=simpleExpenseHistoryExpanded?"履歴を閉じる":"履歴を表示";history.insertAdjacentElement("beforebegin",toggle);toggle.onclick=()=>{simpleExpenseHistoryExpanded=!simpleExpenseHistoryExpanded;renderSalesDashboard()};history.querySelectorAll("[data-edit-simple-expense]").forEach(button=>{const edit=button.onclick;button.onclick=event=>{simpleExpenseHistoryExpanded=true;edit?.call(button,event)}})};
 
 </script>
-<script src="./business-time.js?v=20260929-1"></script>
+<script src="./business-time.js?v=20261009-1"></script>
 <script src="./sale-receivables.js?v=20260929-1"></script>
 <script src="./demo-settings.js?v=20260916-1"></script>
 <script src="./reliability.js?v=20260929-1"></script>
