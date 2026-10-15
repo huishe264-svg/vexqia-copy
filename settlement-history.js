@@ -1,7 +1,7 @@
 // Compact daily settlement controls and independently paged history.
 let simpleExpenseEntryExpanded=false;
 const cashHistoryLabelBeforeOtherExpense=cashHistoryLabel;
-cashHistoryLabel=function(action){return ['supplies_expense','supplies_expense_adjustment','supplies_expense_delete','expense'].includes(action)?'その他経費':cashHistoryLabelBeforeOtherExpense(action)};
+cashHistoryLabel=function(action){const unpaidExtras={unpaid_extras:'未収会計の出前等',unpaid_extras_adjustment:'未収会計の出前等（修正）',unpaid_extras_refund:'未収会計の出前等（取消）'};return unpaidExtras[action]||(['supplies_expense','supplies_expense_adjustment','supplies_expense_delete','expense'].includes(action)?'その他経費':cashHistoryLabelBeforeOtherExpense(action))};
 const renderCashRegisterBeforeHistory=renderCashRegister;
 renderCashRegister=function(){
   renderCashRegisterBeforeHistory();
@@ -51,4 +51,3 @@ async function openFullFinanceHistory(kind){
   }
   button.onclick=next;await next();
 }
-

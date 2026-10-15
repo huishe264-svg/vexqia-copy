@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const migration=fs.readFileSync(path.join(root,'supabase','migrations','20261015100000_deduct_unpaid_sale_extras.sql'),'utf8');
+const history=fs.readFileSync(path.join(root,'settlement-history.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+assert.match(migration,/when new\.payment_status='未収'/);
+assert.match(migration,/cash_change:=-tracked_change/);
+assert.match(migration,/unpaid_extras_adjustment/);
+assert.match(migration,/unpaid_extras_refund/);
+assert.match(migration,/delivery_tobacco_amount-cash_deducted_extras_amount/);
+assert.match(migration,/cash_amount-unsettled_extras_amount-target_consumables_amount/);
+assert.match(history,/未収会計の出前等/);
+assert.match(html,/settlement-history\.js\?v=20261015-1/);
+console.log('PASS unpaid extras are deducted on registration and excluded from later settlement');

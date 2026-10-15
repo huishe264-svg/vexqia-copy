@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require(process.env.PGLITE_MODULE||'../../.validation/pglite/package/dist/index.cjs');
+const migration=fs.readFileSync(path.join(__dirname,'..','supabase','migrations','20261015100000_deduct_unpaid_sale_extras.sql'),'utf8');
+const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+(async()=>{const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create function auth.uid() returns uuid language sql as $$select '${id(1)}'::uuid$$;
+ create table public.stores(id uuid primary key);create table public.store_users(store_id uuid,user_id uuid,role text);
+ create table public.daily_settlements(id uuid primary key default gen_random_uuid(),store_id uuid,business_date date,consumables_amount bigint,settled_sale_ids uuid[],settled_total_amount bigint,settled_delivery_tobacco_amount bigint,settled_net_amount bigint,settled_cash_amount bigint,settled_card_amount bigint,settled_cash_net_amount bigint,register_shortage_amount bigint,register_balance_after bigint,settled_at timestamptz default now());
+ create table public.cash_registers(store_id uuid primary key,base_amount bigint not null default 0,current_amount bigint not null default 0,updated_at timestamptz default now(),updated_by uuid);
+ create table public.cash_register_history(id uuid primary key default gen_random_uuid(),store_id uuid,action text constraint cash_register_history_action_check check(action in('set_amount','settlement','reset')),amount_delta bigint,balance_before bigint,balance_after bigint,base_amount bigint,business_date date,settlement_id uuid,created_by uuid,created_at timestamptz default now());
+ create table public.sales(id uuid primary key default gen_random_uuid(),store_id uuid,business_date date,customer_id uuid,employee_id uuid,payment_status text,payment_method text,party_size int,total_amount bigint,delivery_tobacco_amount bigint not null default 0,is_settled boolean default false,settled_at timestamptz,settlement_id uuid,created_by uuid,updated_by uuid);
+ insert into stores values('${id(2)}');insert into store_users values('${id(2)}','${id(1)}','owner');insert into cash_registers(store_id,current_amount) values('${id(2)}',500);`);
+ await db.exec(migration);
+ const balance=async()=>Number((await db.query('select current_amount from cash_registers where store_id=$1',[id(2)])).rows[0].current_amount);
+ await db.query(`insert into sales(id,store_id,business_date,payment_status,payment_method,party_size,total_amount,delivery_tobacco_amount,created_by,updated_by) values($1,$2,'2026-10-15','未収',null,1,100,20,$3,$3)`,[id(10),id(2),id(1)]);
+ assert.equal(await balance(),480);
+ await db.query('update sales set delivery_tobacco_amount=15 where id=$1',[id(10)]);assert.equal(await balance(),485);
+ await db.query("update sales set payment_status='回収済み',payment_method='現金' where id=$1",[id(10)]);assert.equal(await balance(),485);
+ await db.query('delete from sales where id=$1',[id(10)]);assert.equal(await balance(),500);
+ await db.query(`insert into sales(id,store_id,business_date,payment_status,payment_method,party_size,total_amount,delivery_tobacco_amount,created_by,updated_by) values($1,$2,'2026-10-15','未収',null,1,100,10,$3,$3)`,[id(11),id(2),id(1)]);
+ assert.equal(await balance(),490);await db.query("update sales set payment_status='回収済み',payment_method='現金' where id=$1",[id(11)]);
+ await db.query("select settle_store_sales($1,'2026-10-15',$2,0)",[id(2),[id(11)]]);assert.equal(await balance(),590);
+ await db.query(`insert into sales(id,store_id,business_date,payment_status,payment_method,party_size,total_amount,delivery_tobacco_amount,created_by,updated_by) values($1,$2,'2026-10-16','回収済み','現金',1,100,10,$3,$3)`,[id(12),id(2),id(1)]);
+ await db.query("select settle_store_sales($1,'2026-10-16',$2,0)",[id(2),[id(12)]]);assert.equal(await balance(),680);
+ const actions=(await db.query("select action,amount_delta from cash_register_history where action like 'unpaid_%' order by created_at,id")).rows;
+ assert.deepEqual(actions.map(r=>[r.action,Number(r.amount_delta)]),[['unpaid_extras',-20],['unpaid_extras_adjustment',5],['unpaid_extras_refund',15],['unpaid_extras',-10]]);
+ console.log('PASS unpaid extras cash deduction, edit, delete and no double deduction at settlement');
+}finally{await db.close()}})().catch(error=>{console.error(error);process.exit(1)});
