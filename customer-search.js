@@ -54,13 +54,14 @@ renderCustomerSuggestions=function(query){
  const box=$('customerSuggestions'),q=normalizeText(query);
  if(!q){box.classList.remove('show');return;}
  const rows=activeCustomers().filter(customer=>customerNameMatches(customer,q)).sort((a,b)=>customerNameOrder(a,b,q)).slice(0,15);
- box.innerHTML=rows.length?rows.map(c=>`<div class="customer-suggestion-row"><button type="button" class="suggestion customer-pick" data-pick="${esc(c.id)}"><b>${esc(c.name)}</b><small>本人来店 ${directVisitCount(c.id)}回 ・ 同伴 ${companionVisitCount(c.id)}回</small></button><button type="button" class="customer-preview-button" data-preview="${esc(c.id)}" aria-label="${esc(c.name)}の備考・詳細">詳細</button></div>`).join(''):'<button type="button" class="suggestion customer-pick" id="noCustomer"><b>該当なし</b><small>新規顧客として登録</small></button>';
+ const create=`<button type="button" class="customer-create-suggestion" id="createCustomerFromSearch"><b>＋「${esc(query.trim())}」を新規登録</b><small>候補にないお客様を追加</small></button>`;
+ const suggestions=rows.length?rows.map(c=>`<div class="customer-suggestion-row"><button type="button" class="suggestion customer-pick" data-pick="${esc(c.id)}"><b>${esc(c.name)}</b><small>本人来店 ${directVisitCount(c.id)}回 ・ 同伴 ${companionVisitCount(c.id)}回</small></button><button type="button" class="customer-preview-button" data-preview="${esc(c.id)}" aria-label="${esc(c.name)}の備考・詳細">詳細</button></div>`).join(''):'<div class="customer-no-match">一致する顧客はいません</div>';
+ box.innerHTML=create+suggestions;
  box.classList.add('show');
  box.querySelectorAll('[data-pick]').forEach(button=>button.onclick=()=>selectMainCustomer(button.dataset.pick));
  box.querySelectorAll('[data-preview]').forEach(button=>button.onclick=event=>{event.stopPropagation();openCustomerPreview(button.dataset.preview,button)});
- if($('noCustomer'))$('noCustomer').onclick=()=>{openNewCustomerModal();$('newCustomerName').value=query};
+ $('createCustomerFromSearch').onclick=()=>{openNewCustomerModal();$('newCustomerName').value=query.trim()};
 };
 const customerSearchStyle=document.createElement('style');
-customerSearchStyle.textContent='.customer-suggestion-row{display:flex;align-items:stretch;border-bottom:1px solid #e2e6eb}.customer-pick{flex:1;min-width:0;width:100%;text-align:left;background:white;color:#132238;border:0;min-height:48px;font:inherit}.customer-pick b,.customer-pick small{display:block}.customer-preview-button{flex:0 0 60px;min-height:48px;background:#f3f5f7;color:#132238;border:0;border-left:1px solid #e2e6eb;font:inherit}.customer-preview-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:16px}#customerQuickPreview{z-index:10050}';
+customerSearchStyle.textContent='.customer-create-suggestion{display:block;width:100%;min-height:58px;padding:10px 12px;text-align:left;border:0;border-bottom:1px solid #d7dce3;background:#eef2f7;color:#132238;font:inherit}.customer-create-suggestion b,.customer-create-suggestion small{display:block}.customer-create-suggestion small{margin-top:3px;color:#69717c;font-size:11px}.customer-no-match{padding:13px 12px;color:#747980;font-size:12px}.customer-suggestion-row{display:flex;align-items:stretch;border-bottom:1px solid #e2e6eb}.customer-pick{flex:1;min-width:0;width:100%;text-align:left;background:white;color:#132238;border:0;min-height:48px;font:inherit}.customer-pick b,.customer-pick small{display:block}.customer-preview-button{flex:0 0 60px;min-height:48px;background:#f3f5f7;color:#132238;border:0;border-left:1px solid #e2e6eb;font:inherit}.customer-preview-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:16px}#customerQuickPreview{z-index:10050}';
 document.head.appendChild(customerSearchStyle);
-

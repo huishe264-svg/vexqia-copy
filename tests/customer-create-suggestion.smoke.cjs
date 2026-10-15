@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const source=fs.readFileSync(path.join(root,'customer-search.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+assert.match(source,/id="createCustomerFromSearch"/);
+assert.match(source,/box\.innerHTML=create\+suggestions/);
+assert.match(source,/候補にないお客様を追加/);
+assert.match(source,/openNewCustomerModal\(\);\$\('newCustomerName'\)\.value=query\.trim\(\)/);
+assert.match(html,/customer-search\.js\?v=20261015-1/);
+console.log('PASS customer creation remains available while search suggestions are shown');
