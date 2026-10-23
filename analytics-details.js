@@ -24,8 +24,16 @@
 
  function sum(rows,key){return rows.reduce((total,row)=>total+Number(row?.[key]||0),0)}
  function share(value,total){return total?`${(value/total*100).toFixed(1)}%`:'0.0%'}
- function table(headers,rows){return rows.length?`<div class="analytics-table-wrap"><table class="analytics-detail-table"><thead><tr>${headers.map(header=>`<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:'<div class="analytics-detail-empty">この期間のデータはありません</div>'}
- function detail(title,headers,rows,open=false){return `<details class="analytics-detail-card"${open?' open':''}><summary>${esc(title)}</summary>${table(headers,rows)}</details>`}
+ function table(headers,rows,empty='この期間のデータはありません'){return rows.length?`<div class="analytics-table-wrap"><table class="analytics-detail-table"><thead><tr>${headers.map(header=>`<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:`<div class="analytics-detail-empty">${esc(empty)}</div>`}
+ function detail(title,headers,rows,open=false,empty){return `<details class="analytics-detail-card"${open?' open':''}><summary>${esc(title)}</summary>${table(headers,rows,empty)}</details>`}
+ function median(values){if(!values.length)return 0;const rows=[...values].sort((a,b)=>a-b),middle=Math.floor(rows.length/2);return rows.length%2?rows[middle]:(rows[middle-1]+rows[middle])/2}
+ function daysBetween(from,to){return Math.max(0,Math.round((parseDateLocal(to)-parseDateLocal(from))/86400000))}
+ function customerVisitStats(){
+  const visits=new Map(activeCustomers().map(customer=>[customer.id,new Set()])),visitSales=sales.filter(sale=>sale.record_type!=="receivable_payment"),saleById=new Map(visitSales.map(sale=>[sale.id,sale]));
+  visitSales.forEach(sale=>{if(sale.customer_id&&sale.business_date)visits.get(sale.customer_id)?.add(sale.business_date)});
+  saleCompanions.forEach(link=>{const sale=saleById.get(link.sale_id);if(sale?.business_date)visits.get(link.customer_id)?.add(sale.business_date)});
+  return activeCustomers().map(customer=>{const dates=[...(visits.get(customer.id)||[])].sort(),gaps=dates.slice(1).map((date,index)=>daysBetween(dates[index],date)),weekdayCounts=Array(7).fill(0);dates.forEach(date=>weekdayCounts[parseDateLocal(date).getDay()]++);return{customer,dates,gaps,weekdayCounts,total:dates.length}}).filter(item=>item.total);
+ }
  function renderAnalyticsDetails(){
   let root=$('analyticsDetailRoot');
   if(!root){root=document.createElement('div');root.id='analyticsDetailRoot';$('page-analytics')?.appendChild(root)}
@@ -37,6 +45,8 @@
   const weekdayRows=weekdayData.map(item=>`<tr><td>${item.name}曜日</td><td>${item.dates}</td><td>${item.rows.length}</td><td>${yen(item.value)}</td><td>${yen(item.dates?item.value/item.dates:0)}</td><td>${yen(item.people?item.value/item.people:0)}</td></tr>`);
   const employeeRows=employees.map(employee=>{const rows=recovered.filter(row=>row.employee_id===employee.id),value=totalSales(rows);return{employee,rows,value,people:sum(rows,'party_size')}}).filter(item=>item.rows.length).sort((a,b)=>b.value-a.value).map((item,index)=>`<tr><td><span class="analytics-rank">${index+1}</span>${esc(item.employee.name)}</td><td>${item.rows.length}</td><td>${item.people}</td><td>${yen(item.value)}</td><td><span class="analytics-share">${share(item.value,gross)}</span></td><td>${yen(item.rows.length?item.value/item.rows.length:0)}</td></tr>`);
   const customerRows=activeCustomers().map(customer=>{const rows=recovered.filter(row=>row.customer_id===customer.id),value=totalSales(rows);return{customer,rows,value,people:sum(rows,'party_size')}}).filter(item=>item.rows.length).sort((a,b)=>b.value-a.value).slice(0,20).map((item,index)=>`<tr><td><span class="analytics-rank">${index+1}</span>${esc(item.customer.name)}</td><td>${item.rows.length}</td><td>${item.people}</td><td>${yen(item.value)}</td><td><span class="analytics-share">${share(item.value,gross)}</span></td><td>${yen(item.rows.length?item.value/item.rows.length:0)}</td></tr>`);
+  const visitStats=customerVisitStats(),today=dateString(),lapsedRows=visitStats.map(item=>{const last=item.dates.at(-1),pace=item.gaps.length?Math.max(1,Math.round(median(item.gaps))):60,threshold=item.gaps.length?Math.max(14,Math.round(pace*1.5)):60,since=daysBetween(last,today);return{...item,last,pace,threshold,since,overdue:since-threshold}}).filter(item=>item.overdue>=0).sort((a,b)=>b.overdue/Math.max(1,b.threshold)-a.overdue/Math.max(1,a.threshold)||b.overdue-a.overdue).map(item=>`<tr><td>${esc(item.customer.name)}</td><td>${esc(businessDateWithWeekday(item.last))}</td><td>${item.total}回</td><td>${item.gaps.length?`約${item.pace}日`:'初回来店'}</td><td>${item.since}日</td><td>${item.overdue?`${item.overdue}日超過`:'目安到達'}</td></tr>`);
+  const preferredWeekdayRows=[];weekdayNames.forEach((name,index)=>{visitStats.filter(item=>item.total>=2&&item.weekdayCounts[index]>0).sort((a,b)=>b.weekdayCounts[index]/b.total-a.weekdayCounts[index]/a.total||b.weekdayCounts[index]-a.weekdayCounts[index]||b.total-a.total).slice(0,5).forEach(item=>preferredWeekdayRows.push(`<tr><td>${name}曜日</td><td>${esc(item.customer.name)}</td><td>${item.weekdayCounts[index]}回</td><td>${item.total}回</td><td>${(item.weekdayCounts[index]/item.total*100).toFixed(0)}%</td></tr>`))});
   root.innerHTML=`<div class="section-title">詳しい数値</div><div class="analytics-detail-grid">
    <div class="analytics-detail-stat"><span>会計件数</span><strong>${recovered.length}件</strong><small>回収済み</small></div>
    <div class="analytics-detail-stat"><span>来店人数</span><strong>${people}名</strong><small>会計の人数合計</small></div>
@@ -47,6 +57,8 @@
    <div class="analytics-detail-stat"><span>未収残高</span><strong>${yen(totalSales(unpaid))}</strong><small>${unpaid.length}件</small></div>
    <div class="analytics-detail-stat"><span>登録済み経費</span><strong>${yen(expenseTotal)}</strong><small>${expenseRows.length}件</small></div>
   </div>
+  ${detail('顧客分析：最近来ていない客',['顧客','最終来店','全来店','通常ペース','経過','来店目安'],lapsedRows,true,'現在、来店目安を過ぎた顧客はいません')}
+  ${detail('顧客分析：曜日別によく来る客',['曜日','顧客','曜日来店','全来店','曜日割合'],preferredWeekdayRows,false,'来店履歴が2回以上ある顧客から表示します')}
   ${detail('日別明細',['営業日','会計','人数','売上','現金','カード','未収'],dailyRows,true)}
   ${detail('曜日別の傾向',['曜日','営業日','会計','売上','1日平均','客単価'],weekdayRows)}
   ${detail('口座別の詳細',['口座','会計','人数','売上','構成比','会計単価'],employeeRows)}
@@ -56,3 +68,4 @@
  const renderAnalyticsBeforeDetails=renderAnalytics;
  renderAnalytics=function(){renderAnalyticsBeforeDetails();renderAnalyticsDetails()};
 })();
+

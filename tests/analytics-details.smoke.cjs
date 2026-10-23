@@ -25,8 +25,9 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
    return{ text,stats:[...root.querySelectorAll('.analytics-detail-stat strong')].map(node=>node.textContent),dailyRows:root.querySelectorAll('details[open] tbody tr').length,details:root.querySelectorAll('details').length,overflow:document.documentElement.scrollWidth<=innerWidth };
   });
   assert.deepEqual(result.stats,['2件','5名','¥80,000','¥150,000','¥10,000','¥60,000','¥20,000','¥5,000']);
-  assert.equal(result.dailyRows,2);assert.equal(result.details,4);assert.match(result.text,/オーナー/);assert.match(result.text,/店長/);assert.match(result.text,/田中さん/);assert.match(result.text,/佐藤さん/);assert.ok(result.overflow);assert.deepEqual(errors,[]);
+  assert.equal(result.dailyRows,2);assert.equal(result.details,6);assert.match(result.text,/最近来ていない客/);assert.match(result.text,/曜日別によく来る客/);assert.match(result.text,/オーナー/);assert.match(result.text,/店長/);assert.match(result.text,/田中さん/);assert.match(result.text,/佐藤さん/);assert.ok(result.overflow);assert.deepEqual(errors,[]);
   fs.mkdirSync(path.resolve(__dirname,'../../.validation'),{recursive:true});await page.screenshot({path:path.resolve(__dirname,'../../.validation/analytics-details-mobile.png'),fullPage:true});
   console.log('PASS: detailed analytics totals, daily/weekday/employee/customer tables and mobile width.');
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exit(1)});
+

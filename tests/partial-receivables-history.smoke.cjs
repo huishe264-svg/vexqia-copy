@@ -15,14 +15,16 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
    db.from=table=>{let from=0,to=49;const q={select(){return q},eq(){return q},in(){return q},is(){return q},order(){return q},limit(){return q},range(a,b){from=a;to=b;return q},then(resolve){resolve({data:table==='sale_audit_log'?[]:Array.from({length:Math.max(0,Math.min(to+1,123)-from)},(_,i)=>({id:String(from+i),created_at:'2026-09-29T10:00:00Z',created_by:'owner',action:'settlement',amount_delta:1000,balance_after:30000,expense_date:'2026-09-29',amount:1000})),error:null})}};return q};
    $('appLoading').classList.add('hidden');$('authScreen').classList.add('hidden');$('protectedApp').classList.remove('hidden');goToPage('sales');
   });
-  assert.equal(await page.locator('.cash-register-card > .cash-expense-entry').count(),1);
-  assert.equal(await page.locator('#cashRegisterSection > .expense-entry-card').count(),0);
+  assert.equal(await page.locator('.cash-register-card > .cash-expense-entry').count(),0);
+  assert.equal(await page.locator('#cashRegisterSection > .expense-entry-card').count(),1);
+  assert.deepEqual(await page.locator('.finance-history-summary').allTextContents(),['レジ金変動履歴','経費履歴']);
   assert.match(await page.locator('#toggleSimpleExpenseEntry').textContent(),/その他経費を登録/);
   assert.equal(await page.locator('#simpleExpenseEntryFields').isVisible(),false);
   await page.locator('#toggleSimpleExpenseEntry').click();await page.locator('.simple-expense-amount').fill('1200');
   await page.locator('#toggleSimpleExpenseEntry').click();await page.locator('#toggleSimpleExpenseEntry').click();assert.equal(await page.locator('.simple-expense-amount').inputValue(),'1200');await page.locator('#toggleSimpleExpenseEntry').click();
   const dateText=await page.locator('[data-sales-date="2026-09-29"]').textContent();assert.match(dateText,/火/);assert.match(dateText,/14,000/);assert.match(dateText,/未精算/);
   for(const kind of ['cash','expense']){
+   await page.locator(`[data-finance-history-panel="${kind}"] .finance-history-summary`).click();
    await page.locator(`[data-full-history="${kind}"]`).click();await page.waitForFunction(()=>document.querySelector('.full-finance-history')?.children.length===50);
    await page.locator('.load-finance-history').click();await page.waitForFunction(()=>document.querySelector('.full-finance-history').children.length===100);
    await page.locator('.load-finance-history').click();await page.waitForFunction(()=>document.querySelector('.full-finance-history').children.length===123);assert.equal(await page.locator('.load-finance-history').isVisible(),false);
@@ -37,8 +39,8 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
   await page.screenshot({path:path.resolve(__dirname,'../../.validation/receivable-mobile.png'),fullPage:true});
   const partial=await page.evaluate(()=>{
    sales[0].total_amount=100000;sales[0].receivable_remaining_amount=100000;saleReceivableLinks=[{receivable_sale_id:'debt',payment_sale_id:'today',original_receivable_amount:110000,allocated_amount:10000}];openSaleEditor('debt');
-   return {recovery:!!$('collectReceivableBtn'),remaining:$('recoveryAmount').value,note:$('saleEditBody').textContent};
-  });assert.equal(partial.recovery,true);assert.equal(partial.remaining,'100000');assert.match(partial.note,/110,000/);assert.match(partial.note,/100,000/);
+   return {recovery:!!$('collectReceivableBtn'),writeoff:!!$('writeOffReceivableBtn'),remaining:$('recoveryAmount').value,note:$('saleEditBody').textContent};
+  });assert.equal(partial.recovery,true);assert.equal(partial.writeoff,true);assert.equal(partial.remaining,'100000');assert.match(partial.note,/110,000/);assert.match(partial.note,/100,000/);
   await page.evaluate(()=>{closeModal('saleEditModal');$('customerId').value='customer';selectedReceivableIds=new Set(['debt']);selectedReceivableAmounts=new Map([['debt',10000]]);$('totalAmount').value='15000';selectedPaymentStatus='回収済み';selectedPaymentMethod='カード';validateSaleWithBrands=()=>true;resolveCompanionIds=async()=>[];loadAll=async()=>{};showSaleSuccess=()=>{};showStatus=()=>{};window.savedRequests=[];db.rpc=async(name,args)=>{window.savedRequests.push({name,args});return {data:{duplicate:false}}}});
   await page.evaluate(()=>$('saveBtn').onclick());
   const saved=await page.evaluate(()=>window.savedRequests);assert.equal(saved.length,1);assert.equal(saved[0].name,'create_reliable_sale_with_allocations');assert.deepEqual(saved[0].args.target_receivable_allocations,[{sale_id:'debt',amount:10000}]);assert.equal(saved[0].args.target_total_amount,15000);
