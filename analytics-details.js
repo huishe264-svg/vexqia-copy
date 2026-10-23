@@ -10,6 +10,10 @@
   .analytics-detail-card{margin-bottom:11px;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#fff}
   .analytics-detail-card summary{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 14px;cursor:pointer;font-size:13px;font-weight:900;list-style:none}
   .analytics-detail-card summary::-webkit-details-marker{display:none}.analytics-detail-card summary:after{content:'＋';font-size:18px}.analytics-detail-card[open] summary:after{content:'−'}
+  .analytics-customer-hub{margin-bottom:12px;border:1px solid #dce5ec;border-radius:16px;background:#f7fafc;overflow:hidden}
+  .analytics-customer-hub>summary{display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:0 14px;cursor:pointer;list-style:none;color:var(--navy);font-size:14px;font-weight:950}
+  .analytics-customer-hub>summary::-webkit-details-marker{display:none}.analytics-customer-hub>summary:after{content:'分析を開く ＋';color:var(--muted);font-size:10px}.analytics-customer-hub[open]>summary:after{content:'閉じる −'}
+  .analytics-customer-hub-body{padding:0 8px 8px}.analytics-customer-hub .analytics-detail-card{margin-bottom:7px}.analytics-customer-hub .analytics-detail-card:last-child{margin-bottom:0}
   .analytics-table-wrap{overflow-x:auto;border-top:1px solid var(--line)}
   .analytics-detail-table{width:100%;min-width:560px;border-collapse:collapse;font-size:11px}
   .analytics-detail-table th,.analytics-detail-table td{padding:10px 9px;border-bottom:1px solid #eef0f2;text-align:right;white-space:nowrap}
@@ -34,6 +38,18 @@
   saleCompanions.forEach(link=>{const sale=saleById.get(link.sale_id);if(sale?.business_date)visits.get(link.customer_id)?.add(sale.business_date)});
   return activeCustomers().map(customer=>{const dates=[...(visits.get(customer.id)||[])].sort(),gaps=dates.slice(1).map((date,index)=>daysBetween(dates[index],date)),weekdayCounts=Array(7).fill(0);dates.forEach(date=>weekdayCounts[parseDateLocal(date).getDay()]++);return{customer,dates,gaps,weekdayCounts,total:dates.length}}).filter(item=>item.total);
  }
+ function customerValueRows(){
+  const visitSales=sales.filter(sale=>sale.record_type!=="receivable_payment"),rows=activeCustomers().map(customer=>{const customerSales=visitSales.filter(sale=>sale.customer_id===customer.id),value=customerSales.reduce((total,sale)=>total+Number(sale.original_total_amount??sale.total_amount??0),0);return{customer,count:customerSales.length,value,last:customerSales.map(sale=>sale.business_date).filter(Boolean).sort().at(-1)}}).filter(item=>item.count).sort((a,b)=>b.value-a.value||b.count-a.count);
+  return rows.map((item,index)=>`<tr><td><span class="analytics-rank">${index+1}</span>${esc(item.customer.name)}</td><td>${item.count}回</td><td>${yen(item.value)}</td><td>${yen(item.value/item.count)}</td><td>${item.last?esc(businessDateWithWeekday(item.last)):'－'}</td></tr>`);
+ }
+ function visitFrequencyRows(visitStats){
+  return visitStats.map(item=>{if(item.gaps.length<3)return null;const split=Math.ceil(item.gaps.length/2),older=item.gaps.slice(0,split),recent=item.gaps.slice(split),before=median(older),current=median(recent);if(!before||!current)return null;const change=(before-current)/before*100;if(Math.abs(change)<15)return null;return{...item,before,current,change,direction:change>0?'増加':'低下'}}).filter(Boolean).sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,20).map(item=>`<tr><td>${esc(item.customer.name)}</td><td>${item.direction}</td><td>約${Math.round(item.before)}日</td><td>約${Math.round(item.current)}日</td><td>${item.change>0?'+':''}${item.change.toFixed(0)}%</td><td>${esc(businessDateWithWeekday(item.dates.at(-1)))}</td></tr>`);
+ }
+ function companionPairRows(){
+  const customerById=new Map(activeCustomers().map(customer=>[customer.id,customer])),linksBySale=new Map();saleCompanions.forEach(link=>{if(!linksBySale.has(link.sale_id))linksBySale.set(link.sale_id,[]);linksBySale.get(link.sale_id).push(link.customer_id)});const pairs=new Map();
+  sales.filter(sale=>sale.record_type!=="receivable_payment").forEach(sale=>{const ids=[...new Set([sale.customer_id,...(linksBySale.get(sale.id)||[])].filter(id=>customerById.has(id)))];for(let left=0;left<ids.length;left++)for(let right=left+1;right<ids.length;right++){const sorted=[ids[left],ids[right]].sort(),key=sorted.join('|'),pair=pairs.get(key)||{ids:sorted,count:0,last:null};pair.count++;if(sale.business_date&&(!pair.last||sale.business_date>pair.last))pair.last=sale.business_date;pairs.set(key,pair)}});
+  return [...pairs.values()].sort((a,b)=>b.count-a.count||String(b.last).localeCompare(String(a.last))).slice(0,20).map((pair,index)=>`<tr><td><span class="analytics-rank">${index+1}</span>${esc(customerById.get(pair.ids[0]).name)} × ${esc(customerById.get(pair.ids[1]).name)}</td><td>${pair.count}回</td><td>${pair.last?esc(businessDateWithWeekday(pair.last)):'－'}</td></tr>`);
+ }
  function renderAnalyticsDetails(){
   let root=$('analyticsDetailRoot');
   if(!root){root=document.createElement('div');root.id='analyticsDetailRoot';$('page-analytics')?.appendChild(root)}
@@ -47,6 +63,7 @@
   const customerRows=activeCustomers().map(customer=>{const rows=recovered.filter(row=>row.customer_id===customer.id),value=totalSales(rows);return{customer,rows,value,people:sum(rows,'party_size')}}).filter(item=>item.rows.length).sort((a,b)=>b.value-a.value).slice(0,20).map((item,index)=>`<tr><td><span class="analytics-rank">${index+1}</span>${esc(item.customer.name)}</td><td>${item.rows.length}</td><td>${item.people}</td><td>${yen(item.value)}</td><td><span class="analytics-share">${share(item.value,gross)}</span></td><td>${yen(item.rows.length?item.value/item.rows.length:0)}</td></tr>`);
   const visitStats=customerVisitStats(),today=dateString(),lapsedRows=visitStats.map(item=>{const last=item.dates.at(-1),pace=item.gaps.length?Math.max(1,Math.round(median(item.gaps))):60,threshold=item.gaps.length?Math.max(14,Math.round(pace*1.5)):60,since=daysBetween(last,today);return{...item,last,pace,threshold,since,overdue:since-threshold}}).filter(item=>item.overdue>=0).sort((a,b)=>b.overdue/Math.max(1,b.threshold)-a.overdue/Math.max(1,a.threshold)||b.overdue-a.overdue).map(item=>`<tr><td>${esc(item.customer.name)}</td><td>${esc(businessDateWithWeekday(item.last))}</td><td>${item.total}回</td><td>${item.gaps.length?`約${item.pace}日`:'初回来店'}</td><td>${item.since}日</td><td>${item.overdue?`${item.overdue}日超過`:'目安到達'}</td></tr>`);
   const preferredWeekdayRows=[];weekdayNames.forEach((name,index)=>{visitStats.filter(item=>item.total>=2&&item.weekdayCounts[index]>0).sort((a,b)=>b.weekdayCounts[index]/b.total-a.weekdayCounts[index]/a.total||b.weekdayCounts[index]-a.weekdayCounts[index]||b.total-a.total).slice(0,5).forEach(item=>preferredWeekdayRows.push(`<tr><td>${name}曜日</td><td>${esc(item.customer.name)}</td><td>${item.weekdayCounts[index]}回</td><td>${item.total}回</td><td>${(item.weekdayCounts[index]/item.total*100).toFixed(0)}%</td></tr>`))});
+  const valueRows=customerValueRows(),frequencyRows=visitFrequencyRows(visitStats),pairRows=companionPairRows();
   root.innerHTML=`<div class="section-title">詳しい数値</div><div class="analytics-detail-grid">
    <div class="analytics-detail-stat"><span>会計件数</span><strong>${recovered.length}件</strong><small>回収済み</small></div>
    <div class="analytics-detail-stat"><span>来店人数</span><strong>${people}名</strong><small>会計の人数合計</small></div>
@@ -57,8 +74,13 @@
    <div class="analytics-detail-stat"><span>未収残高</span><strong>${yen(totalSales(unpaid))}</strong><small>${unpaid.length}件</small></div>
    <div class="analytics-detail-stat"><span>登録済み経費</span><strong>${yen(expenseTotal)}</strong><small>${expenseRows.length}件</small></div>
   </div>
-  ${detail('顧客分析：最近来ていない客',['顧客','最終来店','全来店','通常ペース','経過','来店目安'],lapsedRows,true,'現在、来店目安を過ぎた顧客はいません')}
-  ${detail('顧客分析：曜日別によく来る客',['曜日','顧客','曜日来店','全来店','曜日割合'],preferredWeekdayRows,false,'来店履歴が2回以上ある顧客から表示します')}
+  <details class="analytics-customer-hub"><summary>顧客分析（5項目）</summary><div class="analytics-customer-hub-body">
+   ${detail('最近来ていない客',['顧客','最終来店','全来店','通常ペース','経過','来店目安'],lapsedRows,false,'現在、来店目安を過ぎた顧客はいません')}
+   ${detail('曜日別によく来る客',['曜日','顧客','曜日来店','全来店','曜日割合'],preferredWeekdayRows,false,'来店履歴が2回以上ある顧客から表示します')}
+   ${detail('顧客別の累計売上・平均客単価',['顧客','本人会計','累計売上','平均客単価','最終会計'],valueRows,false,'会計履歴がある顧客はまだいません')}
+   ${detail('来店頻度が変わった客',['顧客','変化','以前の間隔','最近の間隔','頻度変化','最終来店'],frequencyRows,false,'来店4回以上で、頻度が15%以上変化した顧客を表示します')}
+   ${detail('よく一緒に来店する組み合わせ',['顧客の組み合わせ','同席回数','最終同席'],pairRows,false,'同伴者を含む会計がまだありません')}
+  </div></details>
   ${detail('日別明細',['営業日','会計','人数','売上','現金','カード','未収'],dailyRows,true)}
   ${detail('曜日別の傾向',['曜日','営業日','会計','売上','1日平均','客単価'],weekdayRows)}
   ${detail('口座別の詳細',['口座','会計','人数','売上','構成比','会計単価'],employeeRows)}
