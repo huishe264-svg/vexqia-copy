@@ -92,6 +92,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
   <button class="drawer-link active" data-page="home" data-title="ホーム">ホーム</button>
   <button class="drawer-link" data-page="input" data-title="売上入力">売上入力</button>
   <button class="drawer-link" data-page="customers" data-title="顧客名簿">顧客名簿</button>
+  <button class="drawer-link" data-page="customer-analytics" data-title="顧客分析">顧客分析</button>
   <button class="drawer-link" data-page="schedule" data-title="予定・誕生日">予定・誕生日</button>
   <div class="drawer-group">売上管理</div>
   <button class="drawer-link" data-page="sales-list" data-title="会計一覧">会計一覧</button>
@@ -126,6 +127,7 @@ body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webk
 </section>
 <section id="page-sales-list" class="page"><div class="toolbar"><input id="salesListSearch" placeholder="顧客名で全期間を検索"><select id="salesListStatus"><option value="">すべて</option><option value="回収済み">回収済み</option><option value="未収">未収</option></select></div><div id="salesMonthNavigator" class="card"></div><div id="allSalesList" class="list"></div><div class="section-title">月別履歴</div><div id="salesMonthHistory" class="sales-history-list"></div></section>
 <section id="page-analytics" class="page"><div class="card analytics-period-card"><div class="section-title">分析期間</div><div class="analytics-presets"><button data-analytics-preset="today">今日</button><button data-analytics-preset="week">今週</button><button data-analytics-preset="month">今月</button><button data-analytics-preset="last-month">先月</button></div><div class="analytics-filter"><div class="field"><label>開始日</label><input type="date" id="analyticsStartDate"></div><div class="field"><label>終了日</label><input type="date" id="analyticsEndDate"></div></div><button class="secondary" id="applyAnalyticsPeriod" style="margin-top:10px">この期間で分析</button></div><div id="analyticsPeriodLabel" class="analytics-period"></div><div id="analyticsMetrics" class="metrics analytics-metrics"></div><div id="analyticsInsight" class="analytics-insight"></div><div class="chart-card"><div class="chart-head"><div class="chart-title">日別売上推移</div></div><div class="chart-wrap"><canvas id="dailySalesChart"></canvas></div></div><div class="chart-card payment-chart-card"><div class="chart-head"><div class="chart-title">支払い・未収内訳</div></div><div class="payment-chart-layout"><div class="chart-wrap compact"><canvas id="analyticsPaymentChart"></canvas></div><div id="analyticsPaymentLegend" class="payment-amount-list"></div></div></div><div class="chart-card"><div class="chart-head"><div class="chart-title">口座別売上</div></div><div class="chart-wrap"><canvas id="employeeSalesChart"></canvas></div></div><div class="chart-card"><div class="chart-head"><div class="chart-title">顧客別売上 TOP10</div></div><div class="chart-wrap"><canvas id="customerSalesChart"></canvas></div></div></section>
+<section id="page-customer-analytics" class="page"><div id="customerAnalyticsRoot"></div></section>
 <section id="page-sales" class="page"><div id="salesDashboardOverview"><div id="cashRegisterSection"></div><div class="section-title">日別の精算</div><div id="salesDateList" class="list"></div></div><div id="salesDayDetail" class="hidden"></div></section>
 <section id="page-customers" class="page"><div id="customerListControls"><div class="row" style="margin-bottom:8px"><input id="customerListSearch" placeholder="顧客名を検索（ひらがな対応）"><button class="small-btn" id="customerListAddBtn">＋ 顧客</button></div><div class="customer-date-filter"><label for="customerVisitDate">来店日で絞り込む</label><div class="row"><input type="date" id="customerVisitDate"><button class="small-btn" id="clearCustomerVisitDate">解除</button></div><div id="customerVisitDateSummary" class="hint"></div></div></div><div id="customerList" class="list"></div><div id="customerDetail" class="hidden"></div></section>
 <section id="page-bottles" class="page"><div class="toolbar"><input id="bottleListSearch" placeholder="顧客名・銘柄・番号で検索"></div><div id="bottleList" class="list"></div></section>
@@ -669,7 +671,7 @@ renderCashRegister=function(){renderCashRegisterWithCollapsedExpensesBase();cons
 <script src="./sale-extras.js?v=20260916-1"></script>
 <script src="./settlement-corrections.js?v=20260917-2"></script>
 <script src="./settlement-history.js?v=20261023-1"></script>
-<script src="./analytics-details.js?v=20261023-2"></script>
+<script src="./analytics-details.js?v=20261023-3"></script>
 <script>startApp();</script>
 </body>
 </html>
