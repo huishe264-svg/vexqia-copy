@@ -23,19 +23,31 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     document.getElementById("page-input").classList.add("active");
     customers = [{ id: "customer-1", name: "テスト顧客" }];
     document.getElementById("customerId").value = "";
+    document.getElementById("employeeSelect").innerHTML = '<option value="employee-1">担当</option>';
+    document.getElementById("employeeSelect").value = "";
+    document.getElementById("partySize").value = "";
     document.getElementById("totalAmount").value = "";
     selectedPaymentStatus = "";
     selectedPaymentMethod = "";
     updateSaleSubmitSummary();
+    const bar = document.querySelector(".sticky-save");
     const panel = document.querySelector(".sticky-save-panel");
     const emptyHeight = panel.getBoundingClientRect().height;
+    const hiddenInitially = !bar.classList.contains("ready") && bar.getAttribute("aria-hidden") === "true";
     document.getElementById("customerId").value = "customer-1";
     document.getElementById("totalAmount").value = "38000";
     selectedPaymentStatus = "回収済み";
     selectedPaymentMethod = "カード";
     updateSaleSubmitSummary();
+    const hiddenWhenPartial = !bar.classList.contains("ready");
+    document.getElementById("employeeSelect").value = "employee-1";
+    document.getElementById("partySize").value = "1";
+    updateSaleSubmitSummary();
     const completedHeight = panel.getBoundingClientRect().height;
     return {
+      hiddenInitially,
+      hiddenWhenPartial,
+      visibleWhenComplete: bar.classList.contains("ready") && bar.getAttribute("aria-hidden") === "false",
       heightStable: Math.abs(emptyHeight - completedHeight) < 1,
       emptyHeight,
       completedHeight,
@@ -43,6 +55,9 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     };
   });
 
+  assert.equal(result.hiddenInitially, true, JSON.stringify(result));
+  assert.equal(result.hiddenWhenPartial, true, JSON.stringify(result));
+  assert.equal(result.visibleWhenComplete, true, JSON.stringify(result));
   assert.equal(result.heightStable, true, JSON.stringify(result));
   assert.equal(result.singleLine, true, JSON.stringify(result));
   await browser.close();
