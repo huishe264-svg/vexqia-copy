@@ -8,13 +8,13 @@ const path = require("node:path");
   });
   const page = await browser.newPage();
 
-  await page.route("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", (route) =>
+  await page.route("**/vendor/supabase-js-2.118.0.min.js", (route) =>
     route.fulfill({
       contentType: "application/javascript",
       body: `window.supabase={createClient(){return {auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:(callback)=>{window.__authCallback=callback;return {data:{subscription:{unsubscribe(){}}}}},signOut:async()=>({error:null})}}}};`,
     }),
   );
-  await page.route("https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js", (route) =>
+  await page.route("**/vendor/chart-4.4.7.min.js", (route) =>
     route.fulfill({
       contentType: "application/javascript",
       body: `window.Chart=class{constructor(canvas,config){this.canvas=canvas;this.config=config}destroy(){} update(){}};`,

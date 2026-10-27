@@ -6,8 +6,8 @@ const {chromium}=require('C:/Users/jojoj/.cache/codex-runtimes/codex-primary-run
  const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',route=>route.fulfill({contentType:'application/javascript',body:'window.supabase={createClient(){return {auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}}};'}));
-  await page.route('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',route=>route.fulfill({contentType:'application/javascript',body:'window.Chart=class{constructor(){}destroy(){}};'}));
+  await page.route('**/vendor/supabase-js-2.118.0.min.js',route=>route.fulfill({contentType:'application/javascript',body:'window.supabase={createClient(){return {auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}}};'}));
+  await page.route('**/vendor/chart-4.4.7.min.js',route=>route.fulfill({contentType:'application/javascript',body:'window.Chart=class{constructor(){}destroy(){}};'}));
   await page.goto('file:///'+path.resolve(__dirname,'../index.html').replaceAll('\\','/'));
   const result=await page.evaluate(()=>{
    currentAuthUser={id:'owner'};currentStoreMember={user_id:'owner',role:'owner'};storeId='store';platformAdminMode=false;
