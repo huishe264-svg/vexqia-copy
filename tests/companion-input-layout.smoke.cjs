@@ -31,6 +31,8 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     const compactBeforeDetails = rows.every(row => row.querySelector(".companion-new-fields").classList.contains("hidden"));
     const focusedLatest = document.activeElement === rows[2].querySelector(".companion-search");
     const addNotCovered = add.getBoundingClientRect().bottom < document.querySelector(".sticky-save").getBoundingClientRect().top;
+    const noIosZoom = [...rows[0].querySelectorAll(".companion-search,.companion-employee,.companion-notes")]
+      .every(field => getComputedStyle(field).fontSize === "16px");
     rows[0].querySelector(".companion-detail-btn").click();
     rows[1].querySelector(".remove-btn").click();
     const remaining = [...document.querySelectorAll("#companionRows .companion-row")];
@@ -43,6 +45,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
       addLabel: add.textContent.includes("次の同伴者"),
       focusedLatest,
       addNotCovered,
+      noIosZoom,
     };
   });
 
@@ -55,6 +58,7 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
     addLabel: true,
     focusedLatest: true,
     addNotCovered: true,
+    noIosZoom: true,
   });
   await browser.close();
   console.log("compact companion input checks passed");
