@@ -13,6 +13,9 @@ const { chromium } = require("C:/Users/jojoj/.cache/codex-runtimes/codex-primary
   assert.match(migration, /'settlement', cash_net_amount/);
   assert.match(migration, /0, 0, 0,/);
   assert.match(html, /bottom:calc\(84px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(html, /header\{padding-top:calc\(14px \+ env\(safe-area-inset-top\)\)\}/);
+  assert.match(html, /overscroll-behavior-y:none/);
+  assert.match(html, /apple-mobile-web-app-status-bar-style" content="default"/);
   assert.doesNotMatch(html, /id="recentCustomerBlock"/);
 
   const browser = await chromium.launch({ headless: true, executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe" });
